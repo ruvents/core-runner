@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -32,19 +33,22 @@ func min(a, b int) int {
 
 type Workers struct {
 	pool    []*PHP
+	argv    []string
 	lastWrk int
 	mu      sync.Mutex
 }
 
-func (w *Workers) Start(n int) error {
+func (w *Workers) Start(argv []string, n int) error {
 	if len(w.pool) != 0 {
 		return errors.New("Already started")
 	}
 
+	w.argv = argv
 	for i := 0; i < n; i++ {
 		php := PHP{}
-		php.Start()
+		php.Start(argv)
 		w.pool = append(w.pool, &php)
+		log.Print("Worker #" + strconv.Itoa(i) + " started")
 	}
 	return nil
 }
@@ -94,7 +98,7 @@ func (w *Workers) restartWorker(wrk *PHP, kill bool) error {
 			return err
 		}
 	}
-	if err = wrk.Start(); err != nil {
+	if err = wrk.Start(w.argv); err != nil {
 		return err
 	}
 	return nil
@@ -107,11 +111,11 @@ type PHP struct {
 	mu    sync.Mutex
 }
 
-func (php *PHP) Start() error {
+func (php *PHP) Start(argv []string) error {
 	if php.cmd != nil {
 		return errors.New("Already started")
 	}
-	cmd := exec.Command("php", "index.php")
+	cmd := exec.Command("php", argv...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -262,8 +266,12 @@ func (php *PHP) reset() {
 }
 
 func main() {
+	n := flag.Int("w", 1, "number of workers to start")
+	port := flag.Int("p", 8080, "port for web server to listen to")
+	flag.Parse()
+
 	wrks := Workers{}
-	wrks.Start(1)
+	wrks.Start(flag.Args(), *n)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			return
@@ -298,7 +306,8 @@ func main() {
 		w.WriteHeader(int(res.StatusCode))
 		fmt.Fprint(w, res.Body)
 	})
-	http.ListenAndServe(":8080", nil)
+	log.Print("Listening on :" + strconv.Itoa(*port))
+	http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 	wrks.Stop()
 }
 
