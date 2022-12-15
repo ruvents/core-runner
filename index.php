@@ -1,87 +1,51 @@
 <?php
 
-class Request {
-    public string $httpVersion;
-    public string $method;
-    public array $query = [];
-    public string $path;
-    public array $headers = [];
-    public string $body = '';
-}
-
-function parseHTTP(string $http): Request {
-    $req = new Request();
-    $lines = explode(PHP_EOL, $http);
-
-    [$req->method, $path, $req->httpVersion] = explode(' ', array_shift($lines), 3);
-    $req->path = parse_url($path, PHP_URL_PATH);
-
-    if (is_string($queryStr = parse_url($path, PHP_URL_QUERY))) {
-        parse_str($queryStr, $req->query);
-    }
-
-    $isBody = false;
-    foreach ($lines as $line) {
-        if ($line === "") {
-            $isBody = true;
-
-            continue;
-        }
-
-        if ($isBody === false) {
-            // Заголовки.
-            [$key, $val] = explode(': ', $line, 2);
-            $req->headers[$key] = $val;
-        } else {
-            // Тело.
-            $req->body .= $line;
-        }
-    }
-
-    return $req;
-}
+require_once "vendor/autoload.php";
+require_once "php/Request.php";
+require_once "php/Response.php";
+require_once "php/PBList.php";
+require_once "php/GPBMetadata/Proto/Request.php";
 
 $in = fopen('php://stdin', 'r');
 $out = fopen('php://stdout', 'w');
 
 foreach (messages($in) as $msg) {
-    $req = parseHTTP($msg);
-    $resp = print_r($req, true);
-    fwrite($out, mb_strlen($resp."\n")."\n");
-    foreach (str_split($resp, 2048) as $spl) {
+    $req = new \Request();
+    $req->mergeFromString($msg);
+
+    $resp = (new \Response())
+        ->setBody($req->getMethod())
+        ->setHeaders([
+            'Content-Type' => (new \PBList())->setValue(['application/json'])
+        ]);
+
+    $res = $resp->serializeToString();
+    fwrite($out, strlen($res)."\n", FILE_APPEND);
+    foreach (str_split($res, 2048) as $spl) {
         fwrite($out, $spl);
     }
-    fwrite($out, "\n");
 }
 
 function messages($stdin): iterable {
-    $len = 0;
-    $msg = '';
-
     while (($line = fgets($stdin)) !== false) {
-        if ($len === 0 && $line === "exit\n") {
+        if ($line === "exit\n") {
             break;
         }
 
-        if ($len === 0) {
-            echo $len;
-            $len = (int) $line;
+        $len = (int) rtrim($line, "\n");
+        $msg = '';
 
-            continue;
+        while (($data = fread($stdin, min($len, 2048))) !== false) {
+            $msg .= $data;
+            $len -= strlen($data);
+
+            if ($len <= 0) {
+                yield $msg;
+                break;
+            }
         }
-
-        $msg .= $line;
-        $len -= mb_strlen($line);
-
-        if ($len === 0) {
-            yield $msg;
-
-            $msg = '';
-        }
-
     }
 }
-
 
 fclose($in);
 fclose($out);

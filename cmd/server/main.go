@@ -2,19 +2,23 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
-	"net/http/httputil"
 	"os/exec"
+	"runner/message"
 	"strconv"
 	"strings"
 	"sync"
+
+	"google.golang.org/protobuf/proto"
 )
 
 const (
-	PipeChunkSize = 2048 // в рунах
+	PipeChunkSize = 2048 // в байтах
 )
 
 func min(a, b int) int {
@@ -27,6 +31,7 @@ func min(a, b int) int {
 type Workers struct {
 	pool    []*PHP
 	lastWrk int
+	mu      sync.Mutex
 }
 
 func (w *Workers) Start(n int) error {
@@ -42,18 +47,18 @@ func (w *Workers) Start(n int) error {
 	return nil
 }
 
-func (w *Workers) Run(data string) ([]byte, error) {
+func (w *Workers) Run(data []byte) ([]byte, error) {
 	php := w.getWorker()
-	err := php.WriteString(data + "\n")
+	err := php.WriteMsg(data)
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
-	resp, err := php.ReadMsg()
+	res, err := php.ReadMsg()
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 
-	return resp, nil
+	return res, nil
 }
 
 func (w *Workers) Stop() {
@@ -65,6 +70,8 @@ func (w *Workers) Stop() {
 }
 
 func (w *Workers) getWorker() *PHP {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	res := w.pool[w.lastWrk]
 	w.lastWrk = (w.lastWrk + 1) % len(w.pool)
 	return res
@@ -96,35 +103,36 @@ func (php *PHP) Start() {
 }
 
 func (php *PHP) Stop() {
-	php.WriteString("exit\n")
+	php.WriteMsg([]byte("exit\n"))
 	php.cmd.Wait()
 }
 
 func (php *PHP) ReadMsg() ([]byte, error) {
 	php.mu.Lock()
 	defer php.mu.Unlock()
-	var res []byte
 	l, err := php.read.ReadString('\n')
 	if err != nil {
 		log.Fatal(err)
 	}
 	ln, err := strconv.Atoi(strings.TrimSuffix(l, "\n"))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("ReadMsg:", err)
 	}
+	buf := &bytes.Buffer{}
+	var res []byte
 	for ln > 0 {
-		b, err := php.read.ReadSlice('\n')
+		n, err := io.CopyN(buf, php.read, int64(min(ln, PipeChunkSize)))
 		if err != nil {
 			log.Fatal(err)
 		}
-		res = append(res, b...)
-		ln -= len(b)
+		res = append(res, buf.Bytes()...)
+		ln -= int(n)
 	}
 
 	return res, nil
 }
 
-func (php *PHP) WriteString(data string) error {
+func (php *PHP) WriteMsg(data []byte) error {
 	php.mu.Lock()
 	defer php.mu.Unlock()
 	// Записываем длину сообщения.
@@ -136,7 +144,7 @@ func (php *PHP) WriteString(data string) error {
 	// Записываем сообщение по частям.
 	ptr := 0
 	for ptr < dlen {
-		_, err = php.write.WriteString(data[ptr:min(ptr+PipeChunkSize, dlen)])
+		_, err = php.write.Write(data[ptr:min(ptr+PipeChunkSize, dlen)])
 		if err != nil {
 			return err
 		}
@@ -147,21 +155,58 @@ func (php *PHP) WriteString(data string) error {
 
 func main() {
 	wrks := Workers{}
-	wrks.Start(16)
+	wrks.Start(32)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		rq, err := httputil.DumpRequest(r, true)
-		if err != nil {
-			log.Fatal(err)
-		}
 		if r.URL.Path != "/" {
 			return
 		}
-		res, err := wrks.Run(string(rq))
+
+		m, err := formRequest(r)
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Fprint(w, string(res))
+
+		buf, err := proto.Marshal(m)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		d, err := wrks.Run(buf)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var res message.Response
+		proto.Unmarshal(d, &res)
+
+		fmt.Fprint(w, res.Body)
 	})
 	http.ListenAndServe(":8080", nil)
 	wrks.Stop()
+}
+
+func formRequest(r *http.Request) (*message.Request, error) {
+	m := message.Request{}
+	m.HttpVersion = r.Proto
+	m.Path = r.URL.Path
+	m.Method = r.Method
+
+	res := make(map[string]*message.List)
+	for k, _ := range r.Header {
+		res[k] = &message.List{Value: r.Header.Values(k)}
+	}
+	m.Headers = res
+
+	res = make(map[string]*message.List)
+	for k, v := range r.URL.Query() {
+		res[k] = &message.List{Value: v}
+	}
+
+	d, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+	m.Body = string(d)
+
+	return &m, nil
 }
