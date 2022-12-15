@@ -70,6 +70,8 @@ function formResponse(int $statusCode, array $headers, string $body): \Response 
 function send($stdout, string $data): void {
     fwrite($stdout, strlen($data)."\n");
 
+    // FIXME: 2048 здесь указывать неверно, т.к. это количество символов, а
+    // должно быть байт.
     foreach (str_split($data, 2048) as $spl) {
         fwrite($stdout, $spl);
     }

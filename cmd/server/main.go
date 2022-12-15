@@ -221,17 +221,15 @@ func (php *PHP) ReadMsg() ([]byte, error) {
 		return nil, err
 	}
 	buf := &bytes.Buffer{}
-	var res []byte
 	for ln > 0 {
 		n, err := io.CopyN(buf, php.read, int64(min(ln, PipeChunkSize)))
 		if err != nil {
 			return nil, err
 		}
-		res = append(res, buf.Bytes()...)
 		ln -= int(n)
 	}
 
-	return res, nil
+	return buf.Bytes(), nil
 }
 
 func (php *PHP) WriteMsg(data []byte) error {
