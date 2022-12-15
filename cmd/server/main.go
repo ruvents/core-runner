@@ -84,22 +84,40 @@ type PHP struct {
 	mu    sync.Mutex
 }
 
-func (php *PHP) Start() {
+func (php *PHP) Start() error {
 	cmd := exec.Command("php", "index.php")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	php.read = bufio.NewReader(stdout)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	php.write = bufio.NewWriter(stdin)
 
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	errReader := bufio.NewReader(stderr)
+	go func() {
+		for {
+			l, err := errReader.ReadString('\n')
+			if err != nil {
+				log.Println("Error while logging: ", err)
+				break
+			}
+			log.Print(l)
+		}
+	}()
+
 	cmd.Start()
 	php.cmd = cmd
+
+	return nil
 }
 
 func (php *PHP) Stop() {
@@ -112,18 +130,18 @@ func (php *PHP) ReadMsg() ([]byte, error) {
 	defer php.mu.Unlock()
 	l, err := php.read.ReadString('\n')
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	ln, err := strconv.Atoi(strings.TrimSuffix(l, "\n"))
 	if err != nil {
-		log.Fatal("ReadMsg:", err)
+		return nil, err
 	}
 	buf := &bytes.Buffer{}
 	var res []byte
 	for ln > 0 {
 		n, err := io.CopyN(buf, php.read, int64(min(ln, PipeChunkSize)))
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		res = append(res, buf.Bytes()...)
 		ln -= int(n)
@@ -155,7 +173,7 @@ func (php *PHP) WriteMsg(data []byte) error {
 
 func main() {
 	wrks := Workers{}
-	wrks.Start(32)
+	wrks.Start(1)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			return
