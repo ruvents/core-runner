@@ -264,8 +264,8 @@ func (php *PHP) reset() {
 }
 
 func main() {
-	n := flag.Int("w", 1, "number of workers to start")
-	port := flag.Int("p", 8080, "port for web server to listen to")
+	n := flag.Int("n", 1, "Number of workers to start")
+	addr := flag.String("l", "127.0.0.1:3000", "Address HTTP-server will listen to")
 	flag.Parse()
 
 	wrks := Workers{}
@@ -304,8 +304,8 @@ func main() {
 		w.WriteHeader(int(res.StatusCode))
 		fmt.Fprint(w, res.Body)
 	})
-	log.Print("Listening on :" + strconv.Itoa(*port))
-	http.ListenAndServe(":"+strconv.Itoa(*port), nil)
+	log.Print("Listening on " + *addr)
+	http.ListenAndServe(*addr, nil)
 	wrks.Stop()
 }
 
