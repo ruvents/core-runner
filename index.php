@@ -4,7 +4,7 @@ require_once "vendor/autoload.php";
 require_once "php/Request.php";
 require_once "php/Response.php";
 require_once "php/PBList.php";
-require_once "php/GPBMetadata/Proto/Request.php";
+require_once "php/GPBMetadata/Messages.php";
 
 $in = fopen('php://stdin', 'r');
 $out = fopen('php://stdout', 'w');
@@ -16,11 +16,11 @@ try {
         $req = psrRequest($msg);
 
         // Формируем ответ. Тут будет логика приложения.
-        $resp = (new \Response())
-            ->setBody($req->getMethod())
-            ->setHeaders([
-                'Content-Type' => (new \PBList())->setValue(['application/json'])
-            ]);
+        $resp = formResponse(
+            200,
+            ['Content-Type' => 'application/json'],
+            "{\"method\": \"{$req->getMethod()}\"}"
+        );
 
         // Отвечаем Go-процессу.
         send($out, $resp->serializeToString());
@@ -57,6 +57,14 @@ function psrRequest(string $msg): \Request {
     $req->mergeFromString($msg);
 
     return $req;
+}
+
+function formResponse(int $statusCode, array $headers, string $body): \Response {
+    return (new \Response())
+        ->setStatusCode($statusCode)
+        ->setHeaders($headers)
+        ->setBody($body)
+    ;
 }
 
 function send($stdout, string $data): void {

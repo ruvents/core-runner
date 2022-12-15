@@ -292,6 +292,10 @@ func main() {
 		var res message.Response
 		proto.Unmarshal(d, &res)
 
+		for k, h := range res.Headers {
+			w.Header().Set(k, h)
+		}
+		w.WriteHeader(int(res.StatusCode))
 		fmt.Fprint(w, res.Body)
 	})
 	http.ListenAndServe(":8080", nil)
@@ -304,16 +308,17 @@ func formRequest(r *http.Request) (*message.Request, error) {
 	m.Path = r.URL.Path
 	m.Method = r.Method
 
-	res := make(map[string]*message.List)
+	hs := make(map[string]string)
 	for k, _ := range r.Header {
-		res[k] = &message.List{Value: r.Header.Values(k)}
+		hs[k] = r.Header.Get(k)
 	}
-	m.Headers = res
+	m.Headers = hs
 
-	res = make(map[string]*message.List)
+	qs := make(map[string]*message.List)
 	for k, v := range r.URL.Query() {
-		res[k] = &message.List{Value: v}
+		qs[k] = &message.List{Values: v}
 	}
+	m.Query = qs
 
 	d, err := io.ReadAll(r.Body)
 	if err != nil {
