@@ -1,5 +1,11 @@
 ...
 
+## Запуск
+
+```sh
+go run cmd/server/main.go -w 8 -p 8080 php/index.php
+```
+
 ## Компиляция proto-файлов
 
 https://developers.google.com/protocol-buffers/docs/reference/go-generated#package
@@ -13,6 +19,6 @@ protoc --go_out=. messages.proto
 
 ```sh
 # php
-composer install
+(cd php && composer install)
 mkdir php -p && protoc --php_out=php/ messages.proto
 ```

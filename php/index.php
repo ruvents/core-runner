@@ -1,10 +1,10 @@
 <?php
 
 require_once "vendor/autoload.php";
-require_once "php/Request.php";
-require_once "php/Response.php";
-require_once "php/PBList.php";
-require_once "php/GPBMetadata/Messages.php";
+require_once "Request.php";
+require_once "Response.php";
+require_once "PBList.php";
+require_once "GPBMetadata/Messages.php";
 
 $in = fopen('php://stdin', 'r');
 $out = fopen('php://stdout', 'w');
