@@ -19,6 +19,8 @@ import (
 
 const (
 	PipeChunkSize = 2048 // в байтах
+	ErrWeb500     = "something went wrong on server side"
+	ErrWeb404     = "not found"
 )
 
 func min(a, b int) int {
@@ -51,10 +53,14 @@ func (w *Workers) Run(data []byte) ([]byte, error) {
 	php := w.getWorker()
 	err := php.WriteMsg(data)
 	if err != nil {
+		log.Println("error writing: ", err)
+		w.restartWorker(php, err != io.EOF)
 		return nil, err
 	}
 	res, err := php.ReadMsg()
 	if err != nil {
+		log.Println("error reading: ", err)
+		w.restartWorker(php, err != io.EOF)
 		return nil, err
 	}
 
@@ -77,6 +83,23 @@ func (w *Workers) getWorker() *PHP {
 	return res
 }
 
+func (w *Workers) restartWorker(wrk *PHP, kill bool) error {
+	var err error
+	if !kill {
+		if err = wrk.Wait(); err != nil {
+			return err
+		}
+	} else {
+		if err = wrk.Kill(); err != nil {
+			return err
+		}
+	}
+	if err = wrk.Start(); err != nil {
+		return err
+	}
+	return nil
+}
+
 type PHP struct {
 	cmd   *exec.Cmd
 	read  *bufio.Reader
@@ -85,6 +108,9 @@ type PHP struct {
 }
 
 func (php *PHP) Start() error {
+	if php.cmd != nil {
+		return errors.New("Already started")
+	}
 	cmd := exec.Command("php", "index.php")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -107,7 +133,9 @@ func (php *PHP) Start() error {
 		for {
 			l, err := errReader.ReadString('\n')
 			if err != nil {
-				log.Println("Error while logging: ", err)
+				if err != io.EOF {
+					log.Println("Error while logging: ", err)
+				}
 				break
 			}
 			log.Print(l)
@@ -120,9 +148,42 @@ func (php *PHP) Start() error {
 	return nil
 }
 
-func (php *PHP) Stop() {
+func (php *PHP) Stop() error {
+	if php.cmd == nil {
+		return errors.New("Worker is not running")
+	}
 	php.WriteMsg([]byte("exit\n"))
-	php.cmd.Wait()
+	err := php.cmd.Wait()
+	if err != nil {
+		return err
+	}
+	php.cmd = nil
+	return nil
+}
+
+func (php *PHP) Wait() error {
+	if php.cmd == nil {
+		return errors.New("Worker is not running")
+	}
+	if err := php.cmd.Wait(); err != nil {
+		return err
+	}
+	php.cmd = nil
+	return nil
+}
+
+func (php *PHP) Kill() error {
+	if php.cmd == nil {
+		return errors.New("Worker is not running")
+	}
+	if err := php.cmd.Process.Kill(); err != nil {
+		return err
+	}
+	if _, err := php.cmd.Process.Wait(); err != nil {
+		return err
+	}
+	php.cmd = nil
+	return nil
 }
 
 func (php *PHP) ReadMsg() ([]byte, error) {
@@ -181,17 +242,22 @@ func main() {
 
 		m, err := formRequest(r)
 		if err != nil {
-			log.Fatal(err)
+			log.Print("error forming protobuf request:", err)
+			http.Error(w, ErrWeb500, 500)
+			return
 		}
 
 		buf, err := proto.Marshal(m)
 		if err != nil {
-			log.Fatal(err)
+			log.Print("error serializing protobuf request:", err)
+			http.Error(w, ErrWeb500, 500)
+			return
 		}
 
 		d, err := wrks.Run(buf)
 		if err != nil {
-			log.Fatal(err)
+			http.Error(w, ErrWeb500, 500)
+			return
 		}
 
 		var res message.Response
