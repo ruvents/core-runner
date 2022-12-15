@@ -149,30 +149,45 @@ func (php *PHP) Start() error {
 }
 
 func (php *PHP) Stop() error {
+	php.mu.Lock()
+	defer php.mu.Unlock()
 	if php.cmd == nil {
 		return errors.New("Worker is not running")
 	}
-	php.WriteMsg([]byte("exit\n"))
-	err := php.cmd.Wait()
-	if err != nil {
+	var err error
+	if _, err := php.write.Write([]byte("exit\n")); err != nil {
 		return err
 	}
-	php.cmd = nil
+	if err = php.write.Flush(); err != nil {
+		return err
+	}
+	if err = php.cmd.Wait(); err != nil {
+		return err
+	}
+	php.reset()
 	return nil
 }
 
 func (php *PHP) Wait() error {
+	php.mu.Lock()
+	defer php.mu.Unlock()
+
 	if php.cmd == nil {
 		return errors.New("Worker is not running")
 	}
+	php.mu.Lock()
+	defer php.mu.Unlock()
 	if err := php.cmd.Wait(); err != nil {
 		return err
 	}
-	php.cmd = nil
+	php.reset()
 	return nil
 }
 
 func (php *PHP) Kill() error {
+	php.mu.Lock()
+	defer php.mu.Unlock()
+
 	if php.cmd == nil {
 		return errors.New("Worker is not running")
 	}
@@ -182,13 +197,17 @@ func (php *PHP) Kill() error {
 	if _, err := php.cmd.Process.Wait(); err != nil {
 		return err
 	}
-	php.cmd = nil
+	php.reset()
 	return nil
 }
 
 func (php *PHP) ReadMsg() ([]byte, error) {
 	php.mu.Lock()
 	defer php.mu.Unlock()
+
+	if php.read == nil {
+		return nil, errors.New("Read pipe is not started")
+	}
 	l, err := php.read.ReadString('\n')
 	if err != nil {
 		return nil, err
@@ -214,6 +233,10 @@ func (php *PHP) ReadMsg() ([]byte, error) {
 func (php *PHP) WriteMsg(data []byte) error {
 	php.mu.Lock()
 	defer php.mu.Unlock()
+
+	if php.write == nil {
+		return errors.New("Write pipe is not started")
+	}
 	// Записываем длину сообщения.
 	dlen := len(data)
 	_, err := php.write.WriteString(strconv.Itoa(dlen) + "\n")
@@ -230,6 +253,12 @@ func (php *PHP) WriteMsg(data []byte) error {
 		ptr += PipeChunkSize
 	}
 	return php.write.Flush()
+}
+
+func (php *PHP) reset() {
+	php.cmd = nil
+	php.write = nil
+	php.read = nil
 }
 
 func main() {

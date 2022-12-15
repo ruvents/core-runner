@@ -11,7 +11,7 @@ $out = fopen('php://stdout', 'w');
 $err = fopen('php://stderr', 'w');
 
 try {
-    foreach (messages($in) as $msg) {
+    foreach (messages($in, $err) as $msg) {
         // Формируем PSR-запрос для совместимости с существующими приложениями.
         $req = psrRequest($msg);
 
@@ -29,13 +29,15 @@ try {
     error($err, $e->getMessage(), $e->getTraceAsString());
 }
 
-function messages($stdin): iterable {
+function messages($stdin, $stderr): iterable {
     while (($line = fgets($stdin)) !== false) {
-        if ($line === "exit\n") {
+        $line = rtrim($line, PHP_EOL);
+
+        if ($line === "exit") {
             break;
         }
 
-        $len = (int) rtrim($line, "\n");
+        $len = (int) $line;
         $msg = '';
 
         while (($data = fread($stdin, min($len, 2048))) !== false) {
