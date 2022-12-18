@@ -16,17 +16,17 @@ const (
 	PipeChunkSize = 2048 // в байтах
 )
 
-type Pool struct {
-	pool    []*Worker
-	lastWrk int
-	mu      sync.Mutex
-}
-
 func min(a, b int) int {
 	if a < b {
 		return a
 	}
 	return b
+}
+
+type Pool struct {
+	pool    []*Worker
+	lastWrk int
+	mu      sync.Mutex
 }
 
 func (p *Pool) Start(argv []string, n int) error {
@@ -62,6 +62,7 @@ func (p *Pool) Stop() {
 func (p *Pool) getWorker() *Worker {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
 	res := p.pool[p.lastWrk]
 	p.lastWrk = (p.lastWrk + 1) % len(p.pool)
 	return res
@@ -121,6 +122,7 @@ func (wrk *Worker) Start(argv []string) error {
 func (wrk *Worker) Stop() error {
 	wrk.mu.Lock()
 	defer wrk.mu.Unlock()
+
 	if wrk.cmd == nil {
 		return errors.New("Worker is not running")
 	}
@@ -231,7 +233,6 @@ func (wrk *Worker) readMsg() ([]byte, error) {
 		}
 		ln -= int(n)
 	}
-
 	return buf.Bytes(), nil
 }
 
