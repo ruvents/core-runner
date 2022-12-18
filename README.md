@@ -3,7 +3,7 @@
 ## Запуск
 
 ```sh
-go run cmd/server/main.go -w 8 -p 8080 php/index.php
+go run cmd/server/main.go -n 8 -l :3000 -s php/public php/index.php
 ```
 
 ## Компиляция proto-файлов
