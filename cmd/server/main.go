@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"runner/message"
 	"runner/worker"
+	"runtime"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -18,7 +19,7 @@ const (
 )
 
 func main() {
-	n := flag.Int("n", 1, "Number of workers to start")
+	n := flag.Int("n", runtime.NumCPU(), "Number of workers to start")
 	addr := flag.String("l", "127.0.0.1:3000", "Address HTTP-server will listen to")
 	flag.Parse()
 
