@@ -35,6 +35,10 @@ class Request extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>string body = 6;</code>
      */
     protected $body = '';
+    /**
+     * Generated from protobuf field <code>map<string, .File> files = 7;</code>
+     */
+    private $files;
 
     /**
      * Constructor.
@@ -48,6 +52,7 @@ class Request extends \Google\Protobuf\Internal\Message
      *     @type array|\Google\Protobuf\Internal\MapField $headers
      *     @type array|\Google\Protobuf\Internal\MapField $query
      *     @type string $body
+     *     @type array|\Google\Protobuf\Internal\MapField $files
      * }
      */
     public function __construct($data = NULL) {
@@ -183,6 +188,28 @@ class Request extends \Google\Protobuf\Internal\Message
     {
         GPBUtil::checkString($var, True);
         $this->body = $var;
+
+        return $this;
+    }
+
+    /**
+     * Generated from protobuf field <code>map<string, .File> files = 7;</code>
+     * @return \Google\Protobuf\Internal\MapField
+     */
+    public function getFiles()
+    {
+        return $this->files;
+    }
+
+    /**
+     * Generated from protobuf field <code>map<string, .File> files = 7;</code>
+     * @param array|\Google\Protobuf\Internal\MapField $var
+     * @return $this
+     */
+    public function setFiles($var)
+    {
+        $arr = GPBUtil::checkMapField($var, \Google\Protobuf\Internal\GPBType::STRING, \Google\Protobuf\Internal\GPBType::MESSAGE, \File::class);
+        $this->files = $arr;
 
         return $this;
     }

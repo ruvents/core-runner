@@ -13,10 +13,17 @@ message Request {
 	map<string, string> headers = 4;
 	map<string, List> query = 5;
 	string body = 6;
+	map<string, File> files = 7;
 }
 
 message Response {
 	int32 statusCode = 1;
 	map<string, string> headers = 2;
 	string body = 3;
+}
+
+message File {
+	string filename = 1;
+	string tmpPath = 2;
+	int64 size = 3;
 }

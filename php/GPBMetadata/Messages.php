@@ -16,24 +16,29 @@ class Messages
         }
         $pool->internalAddGeneratedFile(
             '
-Â
+Ô
 messages.proto"
 List
-values (	"û
+values (	"Ô
 Request
 httpVersion (	
 method (	
 path (	&
 headers (2.Request.HeadersEntry"
 query (2.Request.QueryEntry
-body (	.
+body (	"
+files (2.Request.FilesEntry.
 HeadersEntry
 key (	
 value (	:83
 
 QueryEntry
 key (	
-value (2.List:8"…
+value (2.List:83
+
+FilesEntry
+key (	
+value (2.File:8"…
 Response
 
 statusCode (\'
@@ -41,7 +46,11 @@ statusCode (\'
 body (	.
 HeadersEntry
 key (	
-value (	:8B
+value (	:8"7
+File
+filename (	
+tmpPath (	
+size (B
 Zmessage/bproto3'
         , true);
 

@@ -46,7 +46,7 @@ func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	m, err := h.formRequest(r)
 	if err != nil {
-		log.Print("error forming protobuf request:", err)
+		log.Print("error forming protobuf request: ", err)
 		http.Error(w, ErrWeb500, 500)
 		return
 	}
@@ -88,11 +88,58 @@ func (h *HTTPHandler) formRequest(r *http.Request) (*message.Request, error) {
 	}
 	m.Query = qs
 
-	d, err := io.ReadAll(r.Body)
+	// Читаем тело только для запросов POST, PATCH, PUT, несмотря на то,
+	// что GET поддерживает передачу тела:
+	// https://stackoverflow.com/questions/978061/http-get-with-request-body
+	if (r.Method != http.MethodPost &&
+		r.Method != http.MethodPatch &&
+		r.Method != http.MethodPut) || r.ContentLength == 0 {
+		return &m, nil
+	}
+
+	if strings.HasPrefix(r.Header.Get("content-type"), "multipart/form-data") {
+		// XXX: добавить обработку r.Form.
+		fs, err := h.parseFiles(r)
+		if err != nil {
+			return nil, err
+		}
+		m.Files = fs
+	} else {
+		d, err := io.ReadAll(r.Body)
+		if err != nil {
+			return nil, err
+		}
+		m.Body = string(d)
+	}
+
+	return &m, nil
+}
+
+func (h *HTTPHandler) parseFiles(r *http.Request) (map[string]*message.File, error) {
+	// Сохраняем файлы из запроса во временные файлы для передачи их путей
+	// в воркер. Временные файлы будут удалены по завершению обработки
+	// запроса.
+	err := r.ParseMultipartForm(0)
 	if err != nil {
 		return nil, err
 	}
-	m.Body = string(d)
-
-	return &m, nil
+	fs := make(map[string]*message.File)
+	for k, v := range r.MultipartForm.File {
+		// Пока просто берем первый файл под ключом k.
+		fh := v[0]
+		if fh == nil {
+			continue
+		}
+		// XXX: нужно ли закрывать файлы? По окончании обработки
+		// запроса временные файлы удаляются, так что похоже, что они
+		// закрываются автоматически.
+		mf, _ := fh.Open()
+		f := mf.(*os.File)
+		fs[k] = &message.File{
+			Filename: fh.Filename,
+			TmpPath:  f.Name(),
+			Size:     fh.Size,
+		}
+	}
+	return fs, nil
 }
