@@ -1,2 +1,2 @@
-(use-modules (gnu packages))
-(specifications->manifest '("go" "gcc-toolchain" "glibc:static" "php" "protobuf"))
+(specifications->manifest
+  (list "go" "gcc-toolchain" "glibc:static" "php" "protobuf"))
