@@ -17,9 +17,12 @@ func main() {
 	wrks := runner.Pool{}
 	wrks.Start(append([]string{"php"}, flag.Args()...), *n)
 	log.Print("Listening on " + *addr)
-	http.ListenAndServe(*addr, &runner.HTTPHandler{
+	err := http.ListenAndServe(*addr, &runner.HTTPHandler{
 		StaticDir: *static,
 		Workers:   &wrks,
 	})
 	wrks.Stop()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
