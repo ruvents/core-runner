@@ -31,7 +31,7 @@ type Pool struct {
 
 func (p *Pool) Start(argv []string, n int) error {
 	if len(p.pool) != 0 {
-		return errors.New("Already started")
+		return errors.New("already started")
 	}
 	for i := 0; i < n; i++ {
 		wrk := Worker{}
@@ -78,7 +78,7 @@ type Worker struct {
 
 func (wrk *Worker) Start(argv []string) error {
 	if wrk.cmd != nil {
-		return errors.New("Already started")
+		return errors.New("already started")
 	}
 
 	cmd := exec.Command(argv[0], argv[1:]...)
@@ -213,7 +213,7 @@ func (wrk *Worker) Restart(kill bool) error {
 
 func (wrk *Worker) readMsg() ([]byte, error) {
 	if wrk.read == nil {
-		return nil, errors.New("Read pipe is not started")
+		return nil, errors.New("read pipe is not started")
 	}
 	// Считываем длину сообщения.
 	l, err := wrk.read.ReadString('\n')
@@ -238,7 +238,7 @@ func (wrk *Worker) readMsg() ([]byte, error) {
 
 func (wrk *Worker) writeMsg(data []byte) error {
 	if wrk.write == nil {
-		return errors.New("Write pipe is not started")
+		return errors.New("write pipe is not started")
 	}
 	// Записываем длину сообщения.
 	dlen := len(data)

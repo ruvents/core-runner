@@ -77,7 +77,7 @@ func (h *HTTPHandler) formRequest(r *http.Request) (*message.Request, error) {
 	m.Method = r.Method
 
 	hs := make(map[string]string)
-	for k, _ := range r.Header {
+	for k := range r.Header {
 		hs[k] = r.Header.Get(k)
 	}
 	m.Headers = hs
