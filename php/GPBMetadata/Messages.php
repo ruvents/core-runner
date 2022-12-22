@@ -16,25 +16,17 @@ class Messages
         }
         $pool->internalAddGeneratedFile(
             '
-Ô
-messages.proto"
-List
-values (	"Ô
-Request
-httpVersion (	
-method (	
-path (	&
-headers (2.Request.HeadersEntry"
-query (2.Request.QueryEntry
-body (	"
-files (2.Request.FilesEntry.
+Í
+messages.proto"å
+Request
+method (	
+url (	&
+headers (2.Request.HeadersEntry
+body (	"
+files (2.Request.FilesEntry.
 HeadersEntry
 key (	
 value (	:83
-
-QueryEntry
-key (	
-value (2.List:83
 
 FilesEntry
 key (	

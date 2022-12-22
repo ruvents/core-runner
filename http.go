@@ -73,18 +73,12 @@ func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *HTTPHandler) formRequest(r *http.Request) (*message.Request, error) {
 	m := message.Request{}
-	m.HttpVersion = r.Proto
-	m.Path = r.URL.Path
+	m.Url = r.URL.String()
 	m.Method = r.Method
 
 	m.Headers = make(map[string]string)
 	for k := range r.Header {
 		m.Headers[k] = r.Header.Get(k)
-	}
-
-	m.Query = make(map[string]*message.List)
-	for k, v := range r.URL.Query() {
-		m.Query[k] = &message.List{Values: v}
 	}
 
 	// Читаем тело только для запросов POST, PATCH, PUT, несмотря на то,

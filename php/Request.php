@@ -12,31 +12,23 @@ use Google\Protobuf\Internal\GPBUtil;
 class Request extends \Google\Protobuf\Internal\Message
 {
     /**
-     * Generated from protobuf field <code>string httpVersion = 1;</code>
-     */
-    protected $httpVersion = '';
-    /**
-     * Generated from protobuf field <code>string method = 2;</code>
+     * Generated from protobuf field <code>string method = 1;</code>
      */
     protected $method = '';
     /**
-     * Generated from protobuf field <code>string path = 3;</code>
+     * Generated from protobuf field <code>string url = 2;</code>
      */
-    protected $path = '';
+    protected $url = '';
     /**
-     * Generated from protobuf field <code>map<string, string> headers = 4;</code>
+     * Generated from protobuf field <code>map<string, string> headers = 3;</code>
      */
     private $headers;
     /**
-     * Generated from protobuf field <code>map<string, .List> query = 5;</code>
-     */
-    private $query;
-    /**
-     * Generated from protobuf field <code>string body = 6;</code>
+     * Generated from protobuf field <code>string body = 4;</code>
      */
     protected $body = '';
     /**
-     * Generated from protobuf field <code>map<string, .File> files = 7;</code>
+     * Generated from protobuf field <code>map<string, .File> files = 5;</code>
      */
     private $files;
 
@@ -46,11 +38,9 @@ class Request extends \Google\Protobuf\Internal\Message
      * @param array $data {
      *     Optional. Data for populating the Message object.
      *
-     *     @type string $httpVersion
      *     @type string $method
-     *     @type string $path
+     *     @type string $url
      *     @type array|\Google\Protobuf\Internal\MapField $headers
-     *     @type array|\Google\Protobuf\Internal\MapField $query
      *     @type string $body
      *     @type array|\Google\Protobuf\Internal\MapField $files
      * }
@@ -61,29 +51,7 @@ class Request extends \Google\Protobuf\Internal\Message
     }
 
     /**
-     * Generated from protobuf field <code>string httpVersion = 1;</code>
-     * @return string
-     */
-    public function getHttpVersion()
-    {
-        return $this->httpVersion;
-    }
-
-    /**
-     * Generated from protobuf field <code>string httpVersion = 1;</code>
-     * @param string $var
-     * @return $this
-     */
-    public function setHttpVersion($var)
-    {
-        GPBUtil::checkString($var, True);
-        $this->httpVersion = $var;
-
-        return $this;
-    }
-
-    /**
-     * Generated from protobuf field <code>string method = 2;</code>
+     * Generated from protobuf field <code>string method = 1;</code>
      * @return string
      */
     public function getMethod()
@@ -92,7 +60,7 @@ class Request extends \Google\Protobuf\Internal\Message
     }
 
     /**
-     * Generated from protobuf field <code>string method = 2;</code>
+     * Generated from protobuf field <code>string method = 1;</code>
      * @param string $var
      * @return $this
      */
@@ -105,29 +73,29 @@ class Request extends \Google\Protobuf\Internal\Message
     }
 
     /**
-     * Generated from protobuf field <code>string path = 3;</code>
+     * Generated from protobuf field <code>string url = 2;</code>
      * @return string
      */
-    public function getPath()
+    public function getUrl()
     {
-        return $this->path;
+        return $this->url;
     }
 
     /**
-     * Generated from protobuf field <code>string path = 3;</code>
+     * Generated from protobuf field <code>string url = 2;</code>
      * @param string $var
      * @return $this
      */
-    public function setPath($var)
+    public function setUrl($var)
     {
         GPBUtil::checkString($var, True);
-        $this->path = $var;
+        $this->url = $var;
 
         return $this;
     }
 
     /**
-     * Generated from protobuf field <code>map<string, string> headers = 4;</code>
+     * Generated from protobuf field <code>map<string, string> headers = 3;</code>
      * @return \Google\Protobuf\Internal\MapField
      */
     public function getHeaders()
@@ -136,7 +104,7 @@ class Request extends \Google\Protobuf\Internal\Message
     }
 
     /**
-     * Generated from protobuf field <code>map<string, string> headers = 4;</code>
+     * Generated from protobuf field <code>map<string, string> headers = 3;</code>
      * @param array|\Google\Protobuf\Internal\MapField $var
      * @return $this
      */
@@ -149,29 +117,7 @@ class Request extends \Google\Protobuf\Internal\Message
     }
 
     /**
-     * Generated from protobuf field <code>map<string, .List> query = 5;</code>
-     * @return \Google\Protobuf\Internal\MapField
-     */
-    public function getQuery()
-    {
-        return $this->query;
-    }
-
-    /**
-     * Generated from protobuf field <code>map<string, .List> query = 5;</code>
-     * @param array|\Google\Protobuf\Internal\MapField $var
-     * @return $this
-     */
-    public function setQuery($var)
-    {
-        $arr = GPBUtil::checkMapField($var, \Google\Protobuf\Internal\GPBType::STRING, \Google\Protobuf\Internal\GPBType::MESSAGE, \PBList::class);
-        $this->query = $arr;
-
-        return $this;
-    }
-
-    /**
-     * Generated from protobuf field <code>string body = 6;</code>
+     * Generated from protobuf field <code>string body = 4;</code>
      * @return string
      */
     public function getBody()
@@ -180,7 +126,7 @@ class Request extends \Google\Protobuf\Internal\Message
     }
 
     /**
-     * Generated from protobuf field <code>string body = 6;</code>
+     * Generated from protobuf field <code>string body = 4;</code>
      * @param string $var
      * @return $this
      */
@@ -193,7 +139,7 @@ class Request extends \Google\Protobuf\Internal\Message
     }
 
     /**
-     * Generated from protobuf field <code>map<string, .File> files = 7;</code>
+     * Generated from protobuf field <code>map<string, .File> files = 5;</code>
      * @return \Google\Protobuf\Internal\MapField
      */
     public function getFiles()
@@ -202,7 +148,7 @@ class Request extends \Google\Protobuf\Internal\Message
     }
 
     /**
-     * Generated from protobuf field <code>map<string, .File> files = 7;</code>
+     * Generated from protobuf field <code>map<string, .File> files = 5;</code>
      * @param array|\Google\Protobuf\Internal\MapField $var
      * @return $this
      */

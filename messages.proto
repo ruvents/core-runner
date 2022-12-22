@@ -2,18 +2,12 @@
 syntax = "proto3";
 option go_package = "message/";
 
-message List {
-	repeated string values = 1;
-}
-
 message Request {
-	string httpVersion = 1;
-	string method = 2;
-	string path = 3;
-	map<string, string> headers = 4;
-	map<string, List> query = 5;
-	string body = 6;
-	map<string, File> files = 7;
+	string method = 1;
+	string url = 2;
+	map<string, string> headers = 3;
+	string body = 4;
+	map<string, File> files = 5;
 }
 
 message Response {
