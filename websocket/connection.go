@@ -154,7 +154,7 @@ func (conn *Connection) read() {
 
 		// Отправляем сообщение в ответ.
 		if conn.msgHandler != nil {
-			if resp := conn.msgHandler(msg, conn); resp != nil && len(resp) > 0 {
+			if resp := conn.msgHandler(msg, conn); len(resp) > 0 {
 				conn.send <- resp
 			}
 		}

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runner/message"
 	"strings"
 
@@ -14,8 +15,19 @@ import (
 )
 
 type HTTPHandler struct {
-	StaticDir string
-	Workers   *Pool
+	staticDir string
+	workers   *Pool
+	maxAge    int
+	cors      bool
+}
+
+func NewHTTPHandler(wrks *Pool, staticDir string, maxAge int, cors bool) *HTTPHandler {
+	return &HTTPHandler{
+		workers:   wrks,
+		staticDir: staticDir,
+		maxAge:    maxAge,
+		cors:      cors,
+	}
 }
 
 const (
@@ -24,26 +36,15 @@ const (
 )
 
 func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if h.StaticDir != "" {
-		// Не позволяем доступ к скрытым файлам и перемещение вверх
-		// по директориям.
-		if strings.Contains(r.URL.Path, "/.") || strings.Contains(r.URL.Path, "..") {
-			http.Error(w, ErrWeb404, 404)
-			return
-		}
-		file := strings.TrimSuffix(h.StaticDir, "/") + r.URL.Path
-		stat, err := os.Stat(file)
-		if !errors.Is(err, os.ErrNotExist) {
-			mode := stat.Mode()
-			// Проверяем, что это обычный файл (не папка, не
-			// unix-сокет и т.д.) и он не исполняемый.
-			if mode.IsRegular() && mode.Perm()&0111 == 0 {
-				http.ServeFile(w, r, file)
-				return
-			}
-		}
+	if h.cors {
+		w.Header().Set("access-control-allow-origin", "*")
+		w.Header().Set("access-control-allow-methods", "PUT,GET,POST,PATCH,DELETE,OPTIONS")
+		w.Header().Set("access-control-allow-credentials", "true")
+		w.Header().Set("access-control-allow-headers", "*")
 	}
-
+	if h.staticDir != "" && h.serveStatic(w, r) {
+		return
+	}
 	m, err := h.formRequest(r)
 	if err != nil {
 		log.Print("error forming protobuf request: ", err)
@@ -56,7 +57,7 @@ func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ErrWeb500, 500)
 		return
 	}
-	d, err := h.Workers.Send(buf)
+	d, err := h.workers.Send(buf)
 	if err != nil {
 		http.Error(w, ErrWeb500, 500)
 		return
@@ -76,17 +77,15 @@ func (h *HTTPHandler) formRequest(r *http.Request) (*message.Request, error) {
 	m.Path = r.URL.Path
 	m.Method = r.Method
 
-	hs := make(map[string]string)
+	m.Headers = make(map[string]string)
 	for k := range r.Header {
-		hs[k] = r.Header.Get(k)
+		m.Headers[k] = r.Header.Get(k)
 	}
-	m.Headers = hs
 
-	qs := make(map[string]*message.List)
+	m.Query = make(map[string]*message.List)
 	for k, v := range r.URL.Query() {
-		qs[k] = &message.List{Values: v}
+		m.Query[k] = &message.List{Values: v}
 	}
-	m.Query = qs
 
 	// Читаем тело только для запросов POST, PATCH, PUT, несмотря на то,
 	// что GET поддерживает передачу тела:
@@ -142,4 +141,64 @@ func (h *HTTPHandler) parseFiles(r *http.Request) (map[string]*message.File, err
 		}
 	}
 	return fs, nil
+}
+
+func (h *HTTPHandler) serveStatic(w http.ResponseWriter, r *http.Request) bool {
+	if r.Method != "GET" {
+		return false
+	}
+	// Не позволяем доступ к скрытым файлам и перемещение вверх
+	// по директориям.
+	if strings.Contains(r.URL.Path, "/.") || strings.Contains(r.URL.Path, "..") {
+		http.Error(w, ErrWeb404, 404)
+		return false
+	}
+	file := strings.TrimSuffix(h.staticDir, "/") + r.URL.Path
+	if strings.HasSuffix(file, "/") {
+		file += "index.html"
+	}
+	served, err := h.serveFile(w, r, file)
+	if err != nil {
+		log.Printf("error serving static file %v: ", err)
+		return false
+	}
+	if served {
+		return true
+	}
+	// Если file не существует и расширение не указано: проверяем, есть ли
+	// такой файл с суффиксом ".html". Нужно для ЧПУ:
+	// GET http://localhost/test отдаст http://localhost/test.html.
+	if filepath.Ext(file) == "" {
+		served, err = h.serveFile(w, r, file+".html")
+		if err != nil {
+			log.Printf("error serving static file %v: ", err)
+			return false
+		}
+		return served
+	}
+	return false
+}
+
+func (h *HTTPHandler) serveFile(w http.ResponseWriter, r *http.Request, file string) (bool, error) {
+	stat, err := os.Stat(file)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			// Не нужно останавливать обработку запроса с ошибкой,
+			// если файла не существует и нет никаких более
+			// существенных ошибок.
+			return false, nil
+		}
+		return false, err
+	}
+	mode := stat.Mode()
+	// Проверяем, что это обычный файл (не папка, не unix-сокет и т.д.) и
+	// он не исполняемый.
+	if !mode.IsRegular() || mode.Perm()&0111 != 0 {
+		return false, nil
+	}
+	if h.maxAge != 0 {
+		w.Header().Set("cache-control", fmt.Sprintf("max-age=%d", h.maxAge))
+	}
+	http.ServeFile(w, r, file)
+	return true, nil
 }
