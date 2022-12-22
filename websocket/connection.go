@@ -13,11 +13,12 @@ const (
 	// Время ожидания pong-ответа от клиента. При неполученном pong-ответе
 	// соединение закрывается.
 	pongWait = 180 * time.Second
-	// Промежуток времени между ping-пакетами. Должен быть меньше, чем pongWait.
+	// Промежуток времени между ping-пакетами. Должен быть меньше, чем
+	// pongWait.
 	pingPeriod = pongWait / 5
-	// Количество собщений в очереди, ожидающие отправки. При слишком маленьком
-	// значении будет блокироваться выполнение кода, вызывающего conn.Send().
-	// При слишком большом будет использоваться больше памяти.
+	// Количество собщений в очереди, ожидающие отправки. При слишком
+	// маленьком значении будет блокироваться выполнение кода, вызывающего
+	// conn.Send(). При слишком большом будет использоваться больше памяти.
 	messageQueueSize = 2048
 	// Максимальный размер (в байтах) принимаемых данных в одном
 	// сообщении/фрейме. При превышении соединение закрывается.
@@ -29,23 +30,27 @@ const (
 )
 
 type Connection struct {
-	ID         runner.UUID4
-	Pool       *Pool
-	send       chan []byte
-	connection *websocket.Conn
-	closed     bool
-	msgHandler MessageHandler
-	mu         sync.Mutex
+	ID           runner.UUID4
+	send         chan []byte
+	connection   *websocket.Conn
+	closed       bool
+	msgHandler   MessageHandler
+	closeHandler CloseHandler
+	mu           sync.Mutex
 }
 
-func NewConnection(conn *websocket.Conn, pool *Pool, msgHandler MessageHandler) Connection {
+func NewConnection(
+	conn *websocket.Conn,
+	msgHandler MessageHandler,
+	closeHandler CloseHandler,
+) Connection {
 	return Connection{
-		ID:         runner.NewUUID4(),
-		Pool:       pool,
-		send:       make(chan []byte, messageQueueSize),
-		connection: conn,
-		msgHandler: msgHandler,
-		closed:     false,
+		ID:           runner.NewUUID4(),
+		send:         make(chan []byte, messageQueueSize),
+		connection:   conn,
+		msgHandler:   msgHandler,
+		closeHandler: closeHandler,
+		closed:       false,
 	}
 }
 
@@ -78,9 +83,10 @@ func (conn *Connection) write() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		conn.Pool.Remove(conn)
+		if nil != conn.closeHandler && !conn.IsClosed() {
+			conn.closeHandler(conn)
+		}
 		conn.Close()
-		log.Println("close on write error")
 	}()
 
 	for {
@@ -112,7 +118,7 @@ func (conn *Connection) write() {
 				conn.connection.SetWriteDeadline(time.Now().Add(writeDeadline))
 			}
 			if err := conn.connection.WriteMessage(websocket.PingMessage, nil); err != nil {
-				log.Println("error pinging:", err)
+				log.Printf("error pinging: %v\n", err)
 				return
 			}
 		}
@@ -121,7 +127,9 @@ func (conn *Connection) write() {
 
 func (conn *Connection) read() {
 	defer func() {
-		conn.Pool.Remove(conn)
+		if nil != conn.closeHandler && !conn.IsClosed() {
+			conn.closeHandler(conn)
+		}
 		conn.Close()
 	}()
 
@@ -145,8 +153,10 @@ func (conn *Connection) read() {
 		}
 
 		// Отправляем сообщение в ответ.
-		if resp := conn.msgHandler(msg, conn); resp != nil && len(resp) > 0 {
-			conn.send <- resp
+		if conn.msgHandler != nil {
+			if resp := conn.msgHandler(msg, conn); resp != nil && len(resp) > 0 {
+				conn.send <- resp
+			}
 		}
 	}
 }

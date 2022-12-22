@@ -19,16 +19,17 @@ var upgrader = websocket.Upgrader{
 }
 
 type MessageHandler func(msg []byte, conn *Connection) []byte
+type CloseHandler func(conn *Connection)
 
 type WSHandler struct {
-	conns      Pool
-	msgHandler MessageHandler
+	msgHandler   MessageHandler
+	closeHandler CloseHandler
 }
 
-func NewWSHandler(msgHandler MessageHandler) *WSHandler {
+func NewWSHandler(msgHandler MessageHandler, closeHandler CloseHandler) *WSHandler {
 	return &WSHandler{
-		conns:      NewPool(),
-		msgHandler: msgHandler,
+		msgHandler:   msgHandler,
+		closeHandler: closeHandler,
 	}
 }
 
@@ -38,7 +39,7 @@ func (h *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Println("connection error: ", err)
 		return
 	}
-	connection := NewConnection(conn, &h.conns, h.msgHandler)
+	connection := NewConnection(conn, h.msgHandler, h.closeHandler)
 	// Запускаем чтение и запись в горутинах, чтобы GC мог начать чистить
 	// неиспользуемую память.
 	go connection.read()
