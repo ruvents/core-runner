@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"runner"
+	rhttp "runner/http"
 	"runner/websocket"
 	"runtime"
 )
@@ -31,9 +32,12 @@ func main() {
 
 	// HTTP
 	wrks := runner.Pool{}
-	wrks.Start([]string{"php", exe}, *n)
+	if err := wrks.Start([]string{"php", exe}, *n); err != nil {
+		log.Fatal("error starting: ", err)
+	}
+	defer wrks.Stop()
 	log.Print("Listening on " + *addr)
-	http.Handle("/", runner.NewHTTPHandler(&wrks, *static, *ma, *cors))
+	http.Handle("/", rhttp.NewHTTPHandler(&wrks, *static, *ma, *cors))
 
 	// Websocket
 	wsPool := websocket.NewPool()
@@ -51,7 +55,6 @@ func main() {
 
 	err := http.ListenAndServe(*addr, nil)
 
-	wrks.Stop()
 	if err != nil {
 		log.Fatal(err)
 	}
