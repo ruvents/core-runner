@@ -16,13 +16,6 @@ const (
 	PipeChunkSize = 2048 // в байтах
 )
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 type Pool struct {
 	pool    []*Worker
 	lastWrk int

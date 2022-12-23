@@ -18,3 +18,10 @@ func NewUUID4() UUID4 {
 		buf[:4], buf[4:6], buf[6:8], buf[8:10], buf[10:],
 	))
 }
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}

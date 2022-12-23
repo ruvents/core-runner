@@ -5,7 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"net/rpc"
+	"net/rpc/jsonrpc"
 	"os"
 	"runner"
 	rhttp "runner/http"
@@ -19,6 +22,7 @@ func main() {
 	static := flag.String("s", "", "Directory to serve statically")
 	ma := flag.Int("ma", 0, "Max-age for statically served files (in seconds). Default is 0.")
 	cors := flag.Bool("cors", false, "Add CORS headers to responses with \"*\" values")
+	rpcAddr := flag.String("rpc", "", "Start RPC handler on specified address")
 	flag.Parse()
 
 	args := flag.Args()
@@ -53,9 +57,41 @@ func main() {
 		},
 	))
 
+	// RPC
+	if *rpcAddr != "" {
+		go startRPC(*rpcAddr)
+	}
+
 	err := http.ListenAndServe(*addr, nil)
 
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func startRPC(addr string) {
+	l, e := net.Listen("tcp", addr)
+	if e != nil {
+		log.Fatal("RPC listen error:", e)
+	}
+	defer l.Close()
+	rpc.Register(new(RPCHandler))
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			log.Println("accept RPC connection error: ", err)
+		}
+		go func(c net.Conn) {
+			jsonrpc.ServeConn(conn)
+			c.Close()
+		}(conn)
+	}
+}
+
+type RPCHandler int
+
+func (r *RPCHandler) PublishMessage(msg string, reply *string) error {
+	fmt.Printf("write %s", msg)
+	*reply = "test reply!"
+	return nil
 }

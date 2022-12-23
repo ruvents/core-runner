@@ -6,6 +6,87 @@ require_once "Response.php";
 require_once "File.php";
 require_once "GPBMetadata/Messages.php";
 
+class RPCRequest {
+    private int $id;
+
+    public function __construct(
+        private string $method,
+        private array $params
+    ) {
+        $this->id = random_int(0, 10000); // TODO: UUIDv4
+    }
+
+    public function serialize(): string {
+        return json_encode([
+            'id' => $this->id,
+            'method' => $this->method,
+            'params' => $this->params,
+        ]);
+    }
+}
+
+class RPCResponse {
+    public function __construct(
+        public int $id,
+        public mixed $result,
+        public ?string $error = null,
+    ) {
+    }
+
+    public static function deserialize(string $response) {
+        $decoded = json_decode($response, true);
+
+        return new RPCResponse(
+            $decoded['id'],
+            $decoded['result'],
+            $decoded['error'] ?? null
+        );
+    }
+}
+
+class RPC {
+    private $socket;
+
+    function __construct(string $address) {
+        [$host, $port] = explode(':', $address, 2);
+        $errno = 0;
+        $error = '';
+        $socket = fsockopen($address, (int) $port, $errno, $error);
+
+        if ($socket === false) {
+            throw new \RuntimeException(
+                sprintf(
+                    'Could not open socket %s:%s: %d: %s',
+                    $address,
+                    $port,
+                    $errno,
+                    $error
+                )
+            );
+        }
+
+        $this->socket = $socket;
+    }
+
+    public function send(RPCRequest $request): RPCResponse {
+        fwrite($this->socket, $request->serialize());
+        $result = fgets($this->socket);
+
+        if ($result === false) {
+            $this->close();
+            throw new \RuntimeException('Could not write to socket');
+        }
+
+        return RPCResponse::deserialize($result);
+    }
+
+    public function close() {
+        if (fclose($this->socket) === false) {
+            throw new \RuntimeException('Could not close socket');
+        }
+    }
+}
+
 class Dispatcher {
     private $in;
     private $out;
