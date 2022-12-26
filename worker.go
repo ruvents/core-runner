@@ -28,7 +28,10 @@ func (p *Pool) Start(argv []string, n int) error {
 	}
 	for i := 0; i < n; i++ {
 		wrk := Worker{}
-		wrk.Start(argv)
+		err := wrk.Start(argv)
+		if err != nil {
+			return err
+		}
 		p.pool = append(p.pool, &wrk)
 		log.Printf("PID %d: Worker started", wrk.cmd.Process.Pid)
 	}
@@ -97,7 +100,7 @@ func (wrk *Worker) Start(argv []string) error {
 			l, err := errReader.ReadString('\n')
 			if err != nil {
 				if err != io.EOF {
-					log.Println("Error while logging: ", err)
+					log.Println("logging error: ", err)
 				}
 				break
 			}
@@ -106,6 +109,14 @@ func (wrk *Worker) Start(argv []string) error {
 	}()
 
 	cmd.Start()
+	ok, err := wrk.read.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	if string(ok) != "ok\n" {
+		msg, _ := io.ReadAll(wrk.read)
+		return errors.New(string(msg))
+	}
 	wrk.cmd = cmd
 	wrk.argv = argv
 
