@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -17,7 +18,9 @@ import (
 	"runtime"
 )
 
+var wsPool *websocket.Pool
 var jobs *runner.Jobs
+
 func main() {
 	n := flag.Int("n", runtime.NumCPU(), "Number of workers to start")
 	addr := flag.String("l", "127.0.0.1:3000", "Address HTTP-server will listen to")
@@ -60,23 +63,27 @@ func main() {
 	http.Handle("/", rhttp.NewHTTPHandler(&wrks, *static, *ma, *cors))
 
 	// Websocket
-	wsPool := websocket.NewPool()
+	wsPool = websocket.NewPool()
 	http.Handle("/ws", websocket.NewWSHandler(
 		func(msg []byte, conn *websocket.Connection) []byte {
-			wsPool.Subscribe(conn, "topic")
-			wsPool.Publish("topic", []byte("hello!"), "")
-			wsPool.Remove(conn)
-			return nil
+			cmd := struct {
+				Command string
+				Topics  []string
+			}{}
+			err := json.Unmarshal(msg, &cmd)
+			if err != nil {
+				return nil
+			}
+			if cmd.Command == "join" && len(cmd.Topics) > 0 {
+				wsPool.Subscribe(conn, cmd.Topics[0])
+			}
+			return []byte("ok")
 		},
 		func(conn *websocket.Connection) {
+			wsPool.Remove(conn)
 			fmt.Println("Connection closed!")
 		},
 	))
-
-	// RPC
-	if *rpcAddr != "" {
-		go startRPC(*rpcAddr)
-	}
 
 	err := http.ListenAndServe(*addr, nil)
 
@@ -106,9 +113,24 @@ func startRPC(addr string) {
 
 type RPCHandler int
 
-func (r *RPCHandler) PublishMessage(msg string, reply *string) error {
-	fmt.Printf("write %s", msg)
-	*reply = "test reply!"
+func (r *RPCHandler) PublishMessage(args []string, reply *bool) error {
+	// Первый аргумент -- топик, второй текстовое сообщение.
+	m := struct {
+		Topic   string `json:"topic"`
+		Payload string `json:"payload"`
+	}{
+		Topic:   args[0],
+		Payload: args[1],
+	}
+	msg, err := json.Marshal(m)
+	if err != nil {
+		return fmt.Errorf("json marshaling error: %v", err)
+	}
+	wsPool.Publish(args[0], []byte(msg), "")
+	*reply = true
+	return nil
+}
+
 func (r *RPCHandler) RunJob(args []any, reply *bool) error {
 	// Первый аргумент -- название фоновой работы, второй -- payload.
 	req := message.JobRequest{}
