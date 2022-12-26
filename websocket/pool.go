@@ -16,8 +16,8 @@ type Pool struct {
 	mu       sync.Mutex
 }
 
-func NewPool() Pool {
-	return Pool{
+func NewPool() *Pool {
+	return &Pool{
 		topics:   make(map[string]map[*Connection]bool),
 		pointers: make(map[runner.UUID4][]string),
 	}

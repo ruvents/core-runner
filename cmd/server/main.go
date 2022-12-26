@@ -12,10 +12,12 @@ import (
 	"os"
 	"runner"
 	rhttp "runner/http"
+	"runner/message"
 	"runner/websocket"
 	"runtime"
 )
 
+var jobs *runner.Jobs
 func main() {
 	n := flag.Int("n", runtime.NumCPU(), "Number of workers to start")
 	addr := flag.String("l", "127.0.0.1:3000", "Address HTTP-server will listen to")
@@ -24,6 +26,20 @@ func main() {
 	cors := flag.Bool("cors", false, "Add CORS headers to responses with \"*\" values")
 	rpcAddr := flag.String("rpc", "", "Start RPC handler on specified address")
 	flag.Parse()
+
+	// RPC
+	if *rpcAddr != "" {
+		var jobsWrks runner.Pool
+		// Jobs
+		if err := jobsWrks.Start([]string{"php", "php/jobs.php"}, 2); err != nil {
+			log.Fatal("error starting: ", err)
+		}
+		defer jobsWrks.Stop()
+		jobs = runner.NewJobs(&jobsWrks)
+		go jobs.Start()
+
+		go startRPC(*rpcAddr)
+	}
 
 	args := flag.Args()
 	if len(args) != 1 {
@@ -93,5 +109,12 @@ type RPCHandler int
 func (r *RPCHandler) PublishMessage(msg string, reply *string) error {
 	fmt.Printf("write %s", msg)
 	*reply = "test reply!"
+func (r *RPCHandler) RunJob(args []any, reply *bool) error {
+	// Первый аргумент -- название фоновой работы, второй -- payload.
+	req := message.JobRequest{}
+	req.Name = args[0].(string)
+	req.Payload = args[1].(string)
+	jobs.Queue(&req)
+	*reply = true
 	return nil
 }
