@@ -1,5 +1,7 @@
 /* https://developers.google.com/protocol-buffers/docs/proto3 */
 syntax = "proto3";
+package runner.messages;
+
 option go_package = "message/";
 
 message Request {
@@ -20,4 +22,9 @@ message File {
 	string filename = 1;
 	string tmpPath = 2;
 	int64 size = 3;
+}
+
+message JobRequest {
+	string name = 1;
+	string payload = 2;
 }

@@ -16,25 +16,25 @@ class Messages
         }
         $pool->internalAddGeneratedFile(
             '
-Í
-messages.proto"å
+Ë
+messages.protorunner.messages"•
 Request
 method (	
-url (	&
-headers (2.Request.HeadersEntry
-body (	"
-files (2.Request.FilesEntry.
+url (	6
+headers (2%.runner.messages.Request.HeadersEntry
+body (	2
+files (2#.runner.messages.Request.FilesEntry.
 HeadersEntry
 key (	
-value (	:83
+value (	:8C
 
 FilesEntry
-key (	
-value (2.File:8"…
+key (	$
+value (2.runner.messages.File:8"•
 Response
 
-statusCode (\'
-headers (2.Response.HeadersEntry
+statusCode (7
+headers (2&.runner.messages.Response.HeadersEntry
 body (	.
 HeadersEntry
 key (	
@@ -42,7 +42,11 @@ statusCode (\'
 File
 filename (	
 tmpPath (	
-size (B
+size ("+
+
+JobRequest
+name (	
+payload (	B
 Zmessage/bproto3'
         , true);
 
