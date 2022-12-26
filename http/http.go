@@ -9,6 +9,7 @@ import (
 	"runner"
 	"runner/message"
 	"strings"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -35,6 +36,15 @@ const (
 )
 
 func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	defer func() {
+		log.Printf(
+			"%s %s in %s",
+			r.Method,
+			r.URL.String(),
+			time.Now().Sub(start),
+		)
+	}()
 	if h.cors {
 		w.Header().Set("access-control-allow-origin", "*")
 		w.Header().Set("access-control-allow-methods", "PUT,GET,POST,PATCH,DELETE,OPTIONS")

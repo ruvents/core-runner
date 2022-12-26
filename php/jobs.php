@@ -9,7 +9,7 @@ require_once "Runner/Messages/JobRequest.php";
 require_once "Runner/Dispatcher.php";
 
 (new Dispatcher())->run(
-    static function (string $msg, \Closure $send): void {
+    static function (string $msg): string {
         // Десериализация сообщения в нужный объект. В данном случае, это
         // запрос на выполнение фоновой задачи.
         $req = new JobRequest(); 
@@ -21,8 +21,7 @@ require_once "Runner/Dispatcher.php";
         sleep(2);
         file_put_contents('php://stderr', "Фоновая задача выполнена...\n");
 
-        // Отвечаем Go-серверу.
-        $send('ok');
+        return 'ok';
     }
 );
 

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -28,12 +29,17 @@ func (p *Pool) Start(argv []string, n int) error {
 	}
 	for i := 0; i < n; i++ {
 		wrk := Worker{}
+		start := time.Now()
 		err := wrk.Start(argv)
 		if err != nil {
 			return err
 		}
 		p.pool = append(p.pool, &wrk)
-		log.Printf("PID %d: Worker started", wrk.cmd.Process.Pid)
+		log.Printf(
+			"PID %d: Worker started in %s",
+			wrk.cmd.Process.Pid,
+			time.Now().Sub(start),
+		)
 	}
 	return nil
 }

@@ -16,7 +16,7 @@ require_once "Runner/RPCRequest.php";
 require_once "Runner/RPCResponse.php";
 
 (new Dispatcher())->run(
-    static function (string $msg, \Closure $send): void {
+    static function (string $msg): string {
         // Десериализация сообщения в нужный объект. В данном случае, это
         // HTTP-запрос, но в теории можно использовать любое protobuf-сообщение.
         $req = new Request(); 
@@ -30,7 +30,7 @@ require_once "Runner/RPCResponse.php";
             ->setHeaders(['Content-Type' => 'application/json'])
             ->setBody("{\"method\": \"{$req->getMethod()}\"}")
         ;
-        $send($response->serializeToString());
+        return $response->serializeToString();
     }
 );
 

@@ -20,12 +20,12 @@ final class Dispatcher {
     }
 
     public function run(\Closure $handler) {
+        // Сообщам серверу, что готовы принимать запросы.
         fwrite($this->out, "ok\n");
+
         try {
             foreach ($this->messages() as $msg) {
-                $handler($msg, function (string $msg): void {
-                    $this->send($msg);
-                });
+                $this->send($handler($msg));
             }
         } catch (\Throwable $e) {
             $this->error($e->getMessage(), $e->getTraceAsString());

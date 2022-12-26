@@ -59,7 +59,7 @@ func main() {
 		log.Fatal("error starting: ", err)
 	}
 	defer wrks.Stop()
-	log.Print("Listening on " + *addr)
+	log.Print("http: listening on " + *addr)
 	http.Handle("/", rhttp.NewHTTPHandler(&wrks, *static, *ma, *cors))
 
 	// Websocket
