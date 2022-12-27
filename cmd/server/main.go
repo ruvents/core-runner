@@ -21,46 +21,43 @@ import (
 var wsPool *websocket.Pool
 var jobs *runner.Jobs
 
+// Пример приложения, собранного из библиотеки runner.
 func main() {
-	n := flag.Int("n", runtime.NumCPU(), "Number of workers to start")
+	php := flag.String("p", "", "Run specified PHP-file for HTTP handling. HTTP workers will not be started if flag is omitted.")
+	wrksNum := flag.Int("n", runtime.NumCPU(), "Number of HTTP-workers to start")
 	addr := flag.String("l", "127.0.0.1:3000", "Address HTTP-server will listen to")
 	static := flag.String("s", "", "Directory to serve statically")
-	ma := flag.Int("ma", 0, "Max-age for statically served files (in seconds). Default is 0.")
+	maxAge := flag.Int("ma", 0, "Max-age for statically served files (in seconds). Default is 0.")
 	cors := flag.Bool("cors", false, "Add CORS headers to responses with \"*\" values")
+	jobs := flag.String("j", "", "Run specified PHP-file for jobs handling. Jobs will not be started if flag is omitted.")
 	rpcAddr := flag.String("rpc", "", "Start RPC handler on specified address")
 	flag.Parse()
 
 	// RPC
 	if *rpcAddr != "" {
-		var jobsWrks runner.Pool
-		// Jobs
-		if err := jobsWrks.Start([]string{"php", "php/jobs.php"}, 2); err != nil {
-			log.Fatal("error starting: ", err)
+		if *jobs != "" {
+			mustExist(*jobs)
+			var wrks runner.Pool
+			// Jobs
+			if err := wrks.Start([]string{"php", *jobs}, 2); err != nil {
+				log.Fatal("error starting: ", err)
+			}
+			defer wrks.Stop()
+			go runner.NewJobs(&wrks).Start()
 		}
-		defer jobsWrks.Stop()
-		jobs = runner.NewJobs(&jobsWrks)
-		go jobs.Start()
-
 		go startRPC(*rpcAddr)
 	}
 
-	args := flag.Args()
-	if len(args) != 1 {
-		log.Fatal("there must 1 argument specified: path to php file to execute")
-	}
-	exe := args[0]
-	if _, err := os.Stat(exe); errors.Is(err, os.ErrNotExist) {
-		log.Fatalf("file \"%s\" does not exist", exe)
-	}
-
 	// HTTP
-	wrks := runner.Pool{}
-	if err := wrks.Start([]string{"php", exe}, *n); err != nil {
-		log.Fatal("error starting: ", err)
+	if *php != "" && *wrksNum > 0 {
+		mustExist(*php)
+		wrks := runner.Pool{}
+		if err := wrks.Start([]string{"php", *php}, *wrksNum); err != nil {
+			log.Fatal("error starting: ", err)
+		}
+		defer wrks.Stop()
+		http.Handle("/", rhttp.NewHTTPHandler(&wrks, *static, *maxAge, *cors))
 	}
-	defer wrks.Stop()
-	log.Print("http: listening on " + *addr)
-	http.Handle("/", rhttp.NewHTTPHandler(&wrks, *static, *ma, *cors))
 
 	// Websocket
 	wsPool = websocket.NewPool()
@@ -81,10 +78,27 @@ func main() {
 		},
 		func(conn *websocket.Connection) {
 			wsPool.Remove(conn)
-			fmt.Println("Connection closed!")
 		},
 	))
 
+	if *jobs != "" {
+		log.Println("jobs: waiting for requests")
+	}
+	if *rpcAddr != "" {
+		log.Printf("rpc: listening on %s", *rpcAddr)
+	}
+	if *static != "" {
+		log.Printf(
+			`http: serving files statically from directory "%s"; CORS: %t; Max-Age: %d`,
+			*static,
+			*cors,
+			*maxAge,
+		)
+	}
+	if *php != "" {
+		log.Printf(`http: serving PHP application "%s"`, *static)
+	}
+	log.Print("http: listening on " + *addr)
 	err := http.ListenAndServe(*addr, nil)
 
 	if err != nil {
@@ -139,4 +153,10 @@ func (r *RPCHandler) RunJob(args []any, reply *bool) error {
 	jobs.Queue(&req)
 	*reply = true
 	return nil
+}
+
+func mustExist(file string) {
+	if _, err := os.Stat(file); errors.Is(err, os.ErrNotExist) {
+		log.Fatalf("file \"%s\" does not exist", file)
+	}
 }

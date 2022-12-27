@@ -16,14 +16,14 @@ import (
 
 type HTTPHandler struct {
 	staticDir string
-	workers   *runner.Pool
+	wrks      *runner.Pool
 	maxAge    int
 	cors      bool
 }
 
 func NewHTTPHandler(wrks *runner.Pool, staticDir string, maxAge int, cors bool) *HTTPHandler {
 	return &HTTPHandler{
-		workers:   wrks,
+		wrks:      wrks,
 		staticDir: staticDir,
 		maxAge:    maxAge,
 		cors:      cors,
@@ -54,6 +54,12 @@ func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.staticDir != "" && h.serveStatic(w, r) {
 		return
 	}
+	// Даем возможность раздавать только статику, не выполняя
+	// PHP-приложение. Возможно, лучше просто разделить статику и PHP в
+	// разные HTTP-обработчики.
+	if h.wrks == nil {
+		return
+	}
 	m, err := h.formRequest(r)
 	if err != nil {
 		log.Print("error forming protobuf request: ", err)
@@ -66,7 +72,7 @@ func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ErrWeb500, 500)
 		return
 	}
-	d, err := h.workers.Send(buf)
+	d, err := h.wrks.Send(buf)
 	if err != nil {
 		http.Error(w, ErrWeb500, 500)
 		return
@@ -93,9 +99,10 @@ func (h *HTTPHandler) formRequest(r *http.Request) (*message.Request, error) {
 	// Читаем тело только для запросов POST, PATCH, PUT, несмотря на то,
 	// что GET поддерживает передачу тела:
 	// https://stackoverflow.com/questions/978061/http-get-with-request-body
-	if (r.Method != http.MethodPost &&
-		r.Method != http.MethodPatch &&
-		r.Method != http.MethodPut) || r.ContentLength == 0 {
+	if r.ContentLength == 0 ||
+		(r.Method != http.MethodPost &&
+			r.Method != http.MethodPatch &&
+			r.Method != http.MethodPut) {
 		return &m, nil
 	}
 

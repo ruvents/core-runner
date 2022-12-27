@@ -31,12 +31,10 @@ func (j *Jobs) Stop() {
 }
 
 func (j *Jobs) Start() {
-	log.Println("jobs: waiting for requests")
 	for {
 		select {
 		case req, ok := <-j.queue:
 			if !ok {
-				log.Println("jobs: stopping")
 				return
 			}
 			buf, err := proto.Marshal(req)
