@@ -19,6 +19,13 @@ func NewUUID4() UUID4 {
 	))
 }
 
+func umin(a, b uint64) uint64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a

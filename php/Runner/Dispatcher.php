@@ -36,11 +36,12 @@ final class Dispatcher {
         while (($line = fgets($this->in)) !== false) {
             $line = rtrim($line, "\n");
 
-            if ($line === "exit") {
+            if (strlen($line) === 0) {
                 break;
             }
 
-            $len = (int) $line;
+            $len = unpack('P', $line);
+            $len = reset($len);
             $msg = '';
 
             while (($data = fread($this->in, min($len, 2048))) !== false) {
@@ -56,7 +57,7 @@ final class Dispatcher {
     }
 
     private function send(string $data): void {
-        fwrite($this->out, strlen($data)."\n");
+        fwrite($this->out, pack('P', strlen($data))."\n");
 
         // FIXME: 2048 здесь указывать неверно, т.к. это количество символов, а
         // должно быть байт.

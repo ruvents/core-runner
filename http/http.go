@@ -38,8 +38,7 @@ const (
 func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	defer func() {
-		log.Printf(
-			"%s %s in %s",
+		log.Printf("%s %s in %s",
 			r.Method,
 			r.URL.String(),
 			time.Now().Sub(start),

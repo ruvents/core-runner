@@ -3,12 +3,11 @@ package runner
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"io"
 	"log"
 	"os/exec"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -137,7 +136,7 @@ func (wrk *Worker) Stop() error {
 		return errors.New("Worker is not running")
 	}
 	var err error
-	if _, err := wrk.write.Write([]byte("exit\n")); err != nil {
+	if _, err := wrk.write.Write([]byte("\n")); err != nil {
 		return err
 	}
 	if err = wrk.write.Flush(); err != nil {
@@ -226,22 +225,22 @@ func (wrk *Worker) readMsg() ([]byte, error) {
 		return nil, errors.New("read pipe is not started")
 	}
 	// Считываем длину сообщения.
-	l, err := wrk.read.ReadString('\n')
-	if err != nil {
+	var ln uint64
+	if err := binary.Read(wrk.read, binary.LittleEndian, &ln); err != nil {
 		return nil, err
 	}
-	ln, err := strconv.Atoi(strings.TrimSuffix(l, "\n"))
-	if err != nil {
+	// Пропускаем символ новой строки.
+	if _, err := wrk.read.ReadByte(); err != nil {
 		return nil, err
 	}
 	// Читаем ln байт сообщения частями размером PipeChunkSize.
 	buf := &bytes.Buffer{}
 	for ln > 0 {
-		n, err := io.CopyN(buf, wrk.read, int64(min(ln, PipeChunkSize)))
+		n, err := io.CopyN(buf, wrk.read, int64(umin(ln, PipeChunkSize)))
 		if err != nil {
 			return nil, err
 		}
-		ln -= int(n)
+		ln -= uint64(n)
 	}
 	return buf.Bytes(), nil
 }
@@ -252,14 +251,16 @@ func (wrk *Worker) writeMsg(data []byte) error {
 	}
 	// Записываем длину сообщения.
 	dlen := len(data)
-	_, err := wrk.write.WriteString(strconv.Itoa(dlen) + "\n")
-	if err != nil {
+	if err := binary.Write(wrk.write, binary.LittleEndian, uint64(dlen)); err != nil {
+		return err
+	}
+	if err := wrk.write.WriteByte('\n'); err != nil {
 		return err
 	}
 	// Записываем сообщение по частям размером PipeChunkSize.
 	ptr := 0
 	for ptr < dlen {
-		_, err = wrk.write.Write(data[ptr:min(ptr+PipeChunkSize, dlen)])
+		_, err := wrk.write.Write(data[ptr:min(ptr+PipeChunkSize, dlen)])
 		if err != nil {
 			return err
 		}
