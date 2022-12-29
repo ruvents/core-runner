@@ -39,6 +39,10 @@ type Connection struct {
 	mu           sync.Mutex
 }
 
+// NewConnection инициализирует новое соединение-обертку над conn. При
+// получении сообщения оно передается в msgHandler, в котором может быть
+// определена логика обработки для конкретного приложения. При закрытии
+// соединения будет выполнен closeHandler.
 func NewConnection(
 	conn *websocket.Conn,
 	msgHandler MessageHandler,
@@ -54,12 +58,7 @@ func NewConnection(
 	}
 }
 
-func (conn *Connection) IsClosed() bool {
-	conn.mu.Lock()
-	defer conn.mu.Unlock()
-	return conn.closed
-}
-
+// Open отправляет данные data другой стороне websocket-соединения.
 func (conn *Connection) Send(data []byte) {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
@@ -69,6 +68,8 @@ func (conn *Connection) Send(data []byte) {
 	conn.send <- data
 }
 
+// Close закрывает websocket соединение. При закрытии будет выполнен
+// closeHandler. После закрытия метод Write становится NOOP.
 func (conn *Connection) Close() {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
@@ -79,11 +80,17 @@ func (conn *Connection) Close() {
 	conn.closed = true
 }
 
+func (conn *Connection) isClosed() bool {
+	conn.mu.Lock()
+	defer conn.mu.Unlock()
+	return conn.closed
+}
+
 func (conn *Connection) write() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		if nil != conn.closeHandler && !conn.IsClosed() {
+		if nil != conn.closeHandler && !conn.isClosed() {
 			conn.closeHandler(conn)
 		}
 		conn.Close()
@@ -127,7 +134,7 @@ func (conn *Connection) write() {
 
 func (conn *Connection) read() {
 	defer func() {
-		if nil != conn.closeHandler && !conn.IsClosed() {
+		if nil != conn.closeHandler && !conn.isClosed() {
 			conn.closeHandler(conn)
 		}
 		conn.Close()

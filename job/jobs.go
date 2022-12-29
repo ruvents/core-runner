@@ -1,7 +1,8 @@
-package runner
+package job
 
 import (
 	"log"
+	"runner"
 	"runner/message"
 	"sync"
 
@@ -11,11 +12,11 @@ import (
 // Простые эфемерные очереди.
 type Jobs struct {
 	queue chan *message.JobRequest
-	wrks  *Pool
+	wrks  *runner.Pool
 	mu    sync.Mutex
 }
 
-func NewJobs(wrks *Pool) *Jobs {
+func NewJobs(wrks *runner.Pool) *Jobs {
 	return &Jobs{
 		wrks:  wrks,
 		queue: make(chan *message.JobRequest, 128),

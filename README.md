@@ -20,5 +20,5 @@ protoc --go_out=. messages.proto
 ```sh
 # php
 (cd php && composer install)
-mkdir php -p && protoc --php_out=php/ messages.proto
+protoc --php_out=php/ messages.proto
 ```

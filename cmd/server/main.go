@@ -13,13 +13,14 @@ import (
 	"os"
 	"runner"
 	rhttp "runner/http"
+	"runner/job"
 	"runner/message"
 	"runner/websocket"
 	"runtime"
 )
 
 var wsPool *websocket.Pool
-var jobs *runner.Jobs
+var jobs *job.Jobs
 
 // Пример приложения, собранного из библиотеки runner.
 func main() {
@@ -43,7 +44,7 @@ func main() {
 				log.Fatal("error starting: ", err)
 			}
 			defer wrks.Stop()
-			go runner.NewJobs(&wrks).Start()
+			go job.NewJobs(&wrks).Start()
 		}
 		go startRPC(*rpcAddr)
 	}

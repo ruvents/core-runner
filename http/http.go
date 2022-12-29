@@ -21,6 +21,13 @@ type HTTPHandler struct {
 	cors      bool
 }
 
+// NewHTTPHandler инициализирует новый обработчик HTTP-запросов, способный
+// отдавать статические файлы или результат выполнения выполнения wrks.Send().
+// Если len(wrks) == 0, то отдается только статика; если staticDir == "", то
+// выполняется только wrks.Send(); если не указаны оба аргумента, то на все
+// запросы отдается 404. maxAge указывает максимальную длительность (в
+// секундах) хранения статически розданных файлов в клиенте. При cors == true
+// всем ответам будут добавляться отключающие CORS заголовки.
 func NewHTTPHandler(wrks *runner.Pool, staticDir string, maxAge int, cors bool) *HTTPHandler {
 	return &HTTPHandler{
 		wrks:      wrks,
@@ -61,13 +68,13 @@ func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	m, err := h.formRequest(r)
 	if err != nil {
-		log.Print("error forming protobuf request: ", err)
+		log.Print("protobuf request error: ", err)
 		http.Error(w, ErrWeb500, 500)
 		return
 	}
 	buf, err := proto.Marshal(m)
 	if err != nil {
-		log.Print("error serializing protobuf request:", err)
+		log.Print("protobuf serialization error:", err)
 		http.Error(w, ErrWeb500, 500)
 		return
 	}

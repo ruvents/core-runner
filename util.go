@@ -7,7 +7,8 @@ import (
 
 type UUID4 string
 
-// https://www.rfc-editor.org/rfc/rfc4122
+// NewUUID4 генерирует новый UUID4 соответственно стандарту:
+// https://www.rfc-editor.org/rfc/rfc4122.
 func NewUUID4() UUID4 {
 	buf := make([]byte, 16)
 	rand.Read(buf)

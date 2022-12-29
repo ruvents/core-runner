@@ -18,7 +18,10 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+// Тип функции для обработки получаемых сообщений по соединению.
 type MessageHandler func(msg []byte, conn *Connection) []byte
+
+// Тип функции для обработки закрытых соединений.
 type CloseHandler func(conn *Connection)
 
 type WSHandler struct {
@@ -26,6 +29,7 @@ type WSHandler struct {
 	closeHandler CloseHandler
 }
 
+// NewWSHandler инициализирует HTTP-обработчик для websocket-подключений.
 func NewWSHandler(msgHandler MessageHandler, closeHandler CloseHandler) *WSHandler {
 	return &WSHandler{
 		msgHandler:   msgHandler,

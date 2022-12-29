@@ -13,7 +13,12 @@ import (
 )
 
 const (
-	PipeChunkSize = 2048 // в байтах
+	// Размер пакета данных (в байтах) для общения между Go и запускаемым
+	// процессом. Чем больше значение, тем меньше будет итераций при
+	// передачи большого количества данных, но есть возможость упереться в
+	// ограничения транспорта.
+	// https://unix.stackexchange.com/questions/11946/how-big-is-the-pipe-buffer
+	PipeChunkSize = 2048
 )
 
 type Pool struct {
@@ -22,6 +27,8 @@ type Pool struct {
 	mu      sync.Mutex
 }
 
+// Start запускает n процессов, указанных в argv. Повторный запуск возможен
+// только после выполнения Stop.
 func (p *Pool) Start(argv []string, n int) error {
 	if len(p.pool) != 0 {
 		return errors.New("already started")
@@ -43,6 +50,8 @@ func (p *Pool) Start(argv []string, n int) error {
 	return nil
 }
 
+// Send отправляет данные следующему в очереди процессу для обработки и
+// возвращает ответ из него.
 func (p *Pool) Send(data []byte) ([]byte, error) {
 	wrk := p.getWorker()
 	res, err := wrk.Send(data)
@@ -52,6 +61,7 @@ func (p *Pool) Send(data []byte) ([]byte, error) {
 	return res, err
 }
 
+// Stop останавливает все запущенные процессы и очищает пул.
 func (p *Pool) Stop() {
 	for _, wrk := range p.pool {
 		wrk.Stop()
@@ -77,6 +87,8 @@ type Worker struct {
 	mu    sync.Mutex
 }
 
+// Start запускает процесс с указанными аргументами argv. Этот метод не
+// дожидается завершения процесса.
 func (wrk *Worker) Start(argv []string) error {
 	if wrk.cmd != nil {
 		return errors.New("already started")
@@ -113,7 +125,9 @@ func (wrk *Worker) Start(argv []string) error {
 		}
 	}()
 
-	cmd.Start()
+	if err = cmd.Start(); err != nil {
+		return err
+	}
 	ok, err := wrk.read.ReadString('\n')
 	if err != nil {
 		return err
@@ -128,6 +142,8 @@ func (wrk *Worker) Start(argv []string) error {
 	return nil
 }
 
+// Stop останавливает процесс и закрывает все соответствующие буферы
+// чтения/записи.
 func (wrk *Worker) Stop() error {
 	wrk.mu.Lock()
 	defer wrk.mu.Unlock()
@@ -149,6 +165,8 @@ func (wrk *Worker) Stop() error {
 	return nil
 }
 
+// Wait ждет завершения процесса и закрывает все соответствующие буферы
+// чтения/записи.
 func (wrk *Worker) Wait() error {
 	wrk.mu.Lock()
 	defer wrk.mu.Unlock()
@@ -165,6 +183,8 @@ func (wrk *Worker) Wait() error {
 	return nil
 }
 
+// Kill посылает SIGKILL процессу и закрывает все соответствующие буферы
+// чтения/записи.
 func (wrk *Worker) Kill() error {
 	wrk.mu.Lock()
 	defer wrk.mu.Unlock()
@@ -182,6 +202,8 @@ func (wrk *Worker) Kill() error {
 	return nil
 }
 
+// Send отправляет пакет данных процессу для обработки, дожидается ответ и
+// возвращает его.
 func (wrk *Worker) Send(data []byte) ([]byte, error) {
 	wrk.mu.Lock()
 	defer wrk.mu.Unlock()

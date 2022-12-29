@@ -16,6 +16,7 @@ type Pool struct {
 	mu       sync.Mutex
 }
 
+// NewPool инициализирует новый пул соединений с картой по темам.
 func NewPool() *Pool {
 	return &Pool{
 		topics:   make(map[string]map[*Connection]bool),
@@ -23,6 +24,7 @@ func NewPool() *Pool {
 	}
 }
 
+// Subscribe подписывает соединение conn на тему topic.
 func (p *Pool) Subscribe(conn *Connection, topic string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -36,6 +38,7 @@ func (p *Pool) Subscribe(conn *Connection, topic string) {
 	p.pointers[conn.ID] = append(p.pointers[conn.ID], topic)
 }
 
+// Remove удаляет соединение conn из всех тем пула.
 func (p *Pool) Remove(conn *Connection) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -51,6 +54,9 @@ func (p *Pool) Remove(conn *Connection) {
 	delete(p.pointers, conn.ID)
 }
 
+// Publish публикует сообщение msg для всех соединений темы topic. Если except
+// указан, то сообщение будет разослано для всех соединений, кроме соединения с
+// указанным ID.
 func (p *Pool) Publish(topic string, msg []byte, except runner.UUID4) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
