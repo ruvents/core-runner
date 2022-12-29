@@ -10,15 +10,41 @@ import (
 	"strings"
 )
 
-func (h *HTTPHandler) serveStatic(w http.ResponseWriter, r *http.Request) bool {
+type StaticHandler struct {
+	staticDir string
+	maxAge    int
+	cors      bool
+	next      http.Handler
+}
+
+// NewHandler инициализирует новый обработчик HTTP-запросов, способный отдавать
+// статические файлы. maxAge указывает максимальную длительность (в
+// секундах) хранения статически розданных файлов в браузере. При cors == true
+// всем ответам будут добавляться отключающие CORS заголовки.
+func NewStaticHandler(staticDir string, maxAge int, cors bool) *StaticHandler {
+	return &StaticHandler{
+		staticDir: staticDir,
+		maxAge:    maxAge,
+		cors:      cors,
+	}
+}
+
+func (h *StaticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		return false
+		h.proceed(w, r)
+		return
+	}
+	if h.cors {
+		w.Header().Set("access-control-allow-origin", "*")
+		w.Header().Set("access-control-allow-methods", "PUT,GET,POST,PATCH,DELETE,OPTIONS")
+		w.Header().Set("access-control-allow-credentials", "true")
+		w.Header().Set("access-control-allow-headers", "*")
 	}
 	// Не позволяем доступ к скрытым файлам и перемещение вверх
 	// по директориям.
 	if strings.Contains(r.URL.Path, "/.") || strings.Contains(r.URL.Path, "..") {
-		http.Error(w, ErrWeb404, 404)
-		return false
+		h.proceed(w, r)
+		return
 	}
 	file := strings.TrimSuffix(h.staticDir, "/") + r.URL.Path
 	if strings.HasSuffix(file, "/") {
@@ -27,10 +53,10 @@ func (h *HTTPHandler) serveStatic(w http.ResponseWriter, r *http.Request) bool {
 	served, err := h.serveFile(w, r, file)
 	if err != nil {
 		log.Printf("error serving static file %v: ", err)
-		return false
+		return
 	}
 	if served {
-		return true
+		return
 	}
 	// Если file не существует и расширение не указано: проверяем, есть ли
 	// такой файл с суффиксом ".html". Нужно для ЧПУ:
@@ -39,14 +65,30 @@ func (h *HTTPHandler) serveStatic(w http.ResponseWriter, r *http.Request) bool {
 		served, err = h.serveFile(w, r, file+".html")
 		if err != nil {
 			log.Printf("error serving static file %v: ", err)
-			return false
+			return
 		}
-		return served
+		if served {
+			return
+		}
 	}
-	return false
+	h.proceed(w, r)
 }
 
-func (h *HTTPHandler) serveFile(w http.ResponseWriter, r *http.Request, file string) (bool, error) {
+// Next задает следующий http.Handler, который должен выполниться, если
+// статического файла для ответа не существует.
+func (h *StaticHandler) Next(handler http.Handler) {
+	h.next = handler
+}
+
+func (h *StaticHandler) proceed(w http.ResponseWriter, r *http.Request) {
+	if h.next != nil {
+		h.next.ServeHTTP(w, r)
+		return
+	}
+	http.Error(w, ErrWeb404, 404)
+}
+
+func (h *StaticHandler) serveFile(w http.ResponseWriter, r *http.Request, file string) (bool, error) {
 	stat, err := os.Stat(file)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

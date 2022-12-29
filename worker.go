@@ -44,7 +44,7 @@ func (p *Pool) Start(argv []string, n int) error {
 		log.Printf(
 			"PID %d: Worker started in %s",
 			wrk.cmd.Process.Pid,
-			time.Now().Sub(start),
+			time.Since(start),
 		)
 	}
 	return nil

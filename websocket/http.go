@@ -29,8 +29,8 @@ type WSHandler struct {
 	closeHandler CloseHandler
 }
 
-// NewWSHandler инициализирует HTTP-обработчик для websocket-подключений.
-func NewWSHandler(msgHandler MessageHandler, closeHandler CloseHandler) *WSHandler {
+// NewHandler инициализирует HTTP-обработчик для websocket-подключений.
+func NewHandler(msgHandler MessageHandler, closeHandler CloseHandler) *WSHandler {
 	return &WSHandler{
 		msgHandler:   msgHandler,
 		closeHandler: closeHandler,

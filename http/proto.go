@@ -9,31 +9,24 @@ import (
 	"runner"
 	"runner/message"
 	"strings"
-	"time"
 
 	"google.golang.org/protobuf/proto"
 )
 
-type HTTPHandler struct {
-	staticDir string
-	wrks      *runner.Pool
-	maxAge    int
-	cors      bool
+type ProtoHandler struct {
+	wrks *runner.Pool
+	cors bool
 }
 
-// NewHTTPHandler инициализирует новый обработчик HTTP-запросов, способный
-// отдавать статические файлы или результат выполнения выполнения wrks.Send().
-// Если len(wrks) == 0, то отдается только статика; если staticDir == "", то
-// выполняется только wrks.Send(); если не указаны оба аргумента, то на все
-// запросы отдается 404. maxAge указывает максимальную длительность (в
-// секундах) хранения статически розданных файлов в клиенте. При cors == true
-// всем ответам будут добавляться отключающие CORS заголовки.
-func NewHTTPHandler(wrks *runner.Pool, staticDir string, maxAge int, cors bool) *HTTPHandler {
-	return &HTTPHandler{
-		wrks:      wrks,
-		staticDir: staticDir,
-		maxAge:    maxAge,
-		cors:      cors,
+// NewProtoHandler инициализирует новый обработчик HTTP-запросов, способный
+// отдавать результат выполнения wrks.Send(). Общение с процессами воркеров
+// происходит посредством сообщений в формате protobuf. Если len(wrks) == 0, то
+// на все запросы отдается 404. При cors == true всем ответам будут добавляться
+// отключающие CORS заголовки.
+func NewProtoHandler(wrks *runner.Pool, cors bool) *ProtoHandler {
+	return &ProtoHandler{
+		wrks: wrks,
+		cors: cors,
 	}
 }
 
@@ -42,29 +35,12 @@ const (
 	ErrWeb404 = "not found"
 )
 
-func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
-	defer func() {
-		log.Printf("%s %s in %s",
-			r.Method,
-			r.URL.String(),
-			time.Now().Sub(start),
-		)
-	}()
+func (h *ProtoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.cors {
 		w.Header().Set("access-control-allow-origin", "*")
 		w.Header().Set("access-control-allow-methods", "PUT,GET,POST,PATCH,DELETE,OPTIONS")
 		w.Header().Set("access-control-allow-credentials", "true")
 		w.Header().Set("access-control-allow-headers", "*")
-	}
-	if h.staticDir != "" && h.serveStatic(w, r) {
-		return
-	}
-	// Даем возможность раздавать только статику, не выполняя
-	// PHP-приложение. Возможно, лучше просто разделить статику и PHP в
-	// разные HTTP-обработчики.
-	if h.wrks == nil {
-		return
 	}
 	m, err := h.formRequest(r)
 	if err != nil {
@@ -92,7 +68,7 @@ func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, res.Body)
 }
 
-func (h *HTTPHandler) formRequest(r *http.Request) (*message.Request, error) {
+func (h *ProtoHandler) formRequest(r *http.Request) (*message.Request, error) {
 	m := message.Request{}
 	m.Url = r.URL.String()
 	m.Method = r.Method
@@ -130,7 +106,7 @@ func (h *HTTPHandler) formRequest(r *http.Request) (*message.Request, error) {
 	return &m, nil
 }
 
-func (h *HTTPHandler) parseFiles(r *http.Request) (map[string]*message.File, error) {
+func (h *ProtoHandler) parseFiles(r *http.Request) (map[string]*message.File, error) {
 	// Сохраняем файлы из запроса во временные файлы для передачи их путей
 	// в воркер. Временные файлы будут удалены по завершению обработки
 	// запроса.
