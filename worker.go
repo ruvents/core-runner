@@ -89,6 +89,10 @@ type Worker struct {
 
 // Start запускает процесс с указанными аргументами argv. Этот метод не
 // дожидается завершения процесса.
+// XXX: переделать в блокирующий метод? Будет проще отслеживать завершение
+// процесса (сейчас это реализовано отловом EOF в любом из pipe'ов).
+// exec.Run(), судя по всему, не дает параллельно читать pipe'ы, как и
+// последовательный запуск exec.Start() и exec.Wait().
 func (wrk *Worker) Start(argv []string) error {
 	if wrk.cmd != nil {
 		return errors.New("already started")
@@ -112,6 +116,7 @@ func (wrk *Worker) Start(argv []string) error {
 		return err
 	}
 	errReader := bufio.NewReader(stderr)
+	// Параллельно запускаем чтение и вывод ошибок приложения.
 	go func() {
 		for {
 			l, err := errReader.ReadString('\n')
@@ -202,7 +207,7 @@ func (wrk *Worker) Kill() error {
 	return nil
 }
 
-// Send отправляет пакет данных процессу для обработки, дожидается ответ и
+// Send отправляет данные процессу для обработки, дожидается ответа и
 // возвращает его.
 func (wrk *Worker) Send(data []byte) ([]byte, error) {
 	wrk.mu.Lock()
@@ -222,6 +227,8 @@ func (wrk *Worker) Send(data []byte) ([]byte, error) {
 	return res, nil
 }
 
+// Restart перезапускает процесс. Если kill = true, то процессу посылается
+// SIGKILL, иначе ожидается его естественное завершение.
 func (wrk *Worker) Restart(kill bool) error {
 	wrk.mu.Lock()
 	defer wrk.mu.Unlock()

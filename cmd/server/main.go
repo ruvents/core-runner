@@ -102,7 +102,7 @@ func main() {
 		)
 	}
 	if *httpExe != "" {
-		log.Printf(`http: serving PHP application "%s"`, *static)
+		log.Printf(`http: serving PHP application "%s"`, *httpExe)
 	}
 	log.Print("http: listening on " + *addr)
 	err := http.ListenAndServe(*addr, nil)
