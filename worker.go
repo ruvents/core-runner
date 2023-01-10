@@ -55,7 +55,7 @@ func (p *Pool) Start(argv []string, n int) error {
 func (p *Pool) Send(data []byte) ([]byte, error) {
 	wrk := p.getWorker()
 	res, err := wrk.Send(data)
-	if err != nil && err != io.EOF {
+	if err != nil {
 		wrk.Restart(err != io.EOF)
 	}
 	return res, err
@@ -179,8 +179,6 @@ func (wrk *Worker) Wait() error {
 	if wrk.cmd == nil {
 		return errors.New("Worker is not running")
 	}
-	wrk.mu.Lock()
-	defer wrk.mu.Unlock()
 	if err := wrk.cmd.Wait(); err != nil {
 		return err
 	}
@@ -215,12 +213,12 @@ func (wrk *Worker) Send(data []byte) ([]byte, error) {
 
 	err := wrk.writeMsg(data)
 	if err != nil {
-		log.Println("error writing: ", err)
+		log.Println("write error:", err)
 		return nil, err
 	}
 	res, err := wrk.readMsg()
 	if err != nil {
-		log.Println("error reading: ", err)
+		log.Println("read error:", err)
 		return nil, err
 	}
 
@@ -235,18 +233,15 @@ func (wrk *Worker) Restart(kill bool) error {
 
 	var err error
 	if kill {
-		if err = wrk.Kill(); err != nil {
-			return err
-		}
-	} else {
-		if err = wrk.Wait(); err != nil {
+		if err = wrk.cmd.Process.Kill(); err != nil {
 			return err
 		}
 	}
-	if err = wrk.Start(wrk.argv); err != nil {
-		return err
+	if err = wrk.cmd.Wait(); err != nil {
+		log.Println("restart wait error:", err)
 	}
-	return nil
+	wrk.cmd = nil
+	return wrk.Start(wrk.argv)
 }
 
 func (wrk *Worker) readMsg() ([]byte, error) {
