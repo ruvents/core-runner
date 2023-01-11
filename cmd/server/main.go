@@ -13,14 +13,14 @@ import (
 	"os"
 	"runner"
 	rhttp "runner/http"
+	"runner/http/websocket"
 	"runner/jobs"
 	"runner/message"
-	"runner/websocket"
 	"runtime"
 )
 
 var wsPool *websocket.Pool
-var jobsPool *jobs.Jobs
+var jobsPool *jobs.Pool
 
 // Пример приложения, собранного из библиотеки runner.
 func main() {
@@ -44,7 +44,7 @@ func main() {
 				log.Fatal("error starting: ", err)
 			}
 			defer wrks.Stop()
-			go jobs.New(&wrks).Start()
+			go jobs.New(&wrks).Run()
 		}
 		go startRPC(*rpcAddr)
 	}
@@ -96,9 +96,7 @@ func main() {
 	if *static != "" {
 		log.Printf(
 			`http: serving files statically from directory "%s"; CORS: %t; Max-Age: %d`,
-			*static,
-			*cors,
-			*maxAge,
+			*static, *cors, *maxAge,
 		)
 	}
 	if *httpExe != "" {

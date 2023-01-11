@@ -24,20 +24,20 @@ type MessageHandler func(msg []byte, conn *Connection) []byte
 // Тип функции для обработки закрытых соединений.
 type CloseHandler func(conn *Connection)
 
-type WSHandler struct {
+type Handler struct {
 	msgHandler   MessageHandler
 	closeHandler CloseHandler
 }
 
 // NewHandler инициализирует HTTP-обработчик для websocket-подключений.
-func NewHandler(msgHandler MessageHandler, closeHandler CloseHandler) *WSHandler {
-	return &WSHandler{
+func NewHandler(msgHandler MessageHandler, closeHandler CloseHandler) *Handler {
+	return &Handler{
 		msgHandler:   msgHandler,
 		closeHandler: closeHandler,
 	}
 }
 
-func (h *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("connection error: ", err)

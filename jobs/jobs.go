@@ -9,27 +9,30 @@ import (
 )
 
 // Простые эфемерные очереди.
-type Jobs struct {
+type Pool struct {
 	queue chan *message.JobRequest
 	wrks  *runner.Pool
 }
 
-func New(wrks *runner.Pool) *Jobs {
-	return &Jobs{
+func New(wrks *runner.Pool) *Pool {
+	return &Pool{
 		wrks:  wrks,
 		queue: make(chan *message.JobRequest, 128),
 	}
 }
 
-func (j *Jobs) Queue(r *message.JobRequest) {
+// Queue добавляет в очередь на выполнение задачу.
+func (j *Pool) Queue(r *message.JobRequest) {
 	j.queue <- r
 }
 
-func (j *Jobs) Stop() {
+// Stop останавливает выполнение очередей.
+func (j *Pool) Stop() {
 	close(j.queue)
 }
 
-func (j *Jobs) Start() {
+// Run запускает обработку эфемерных очередей, блокируя выполнение.
+func (j *Pool) Run() {
 	for {
 		select {
 		case req, ok := <-j.queue:
