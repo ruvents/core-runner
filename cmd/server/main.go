@@ -44,7 +44,8 @@ func main() {
 				log.Fatal("error starting: ", err)
 			}
 			defer wrks.Stop()
-			go jobs.New(&wrks).Run()
+			jobsPool = jobs.New(&wrks)
+			go jobsPool.Run()
 		}
 		go startRPC(*rpcAddr)
 	}

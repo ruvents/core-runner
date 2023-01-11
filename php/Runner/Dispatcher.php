@@ -20,7 +20,7 @@ final class Dispatcher {
     }
 
     public function run(\Closure $handler) {
-        // Сообщам серверу, что готовы принимать запросы.
+        // Сообщаем серверу, что готовы принимать запросы.
         fwrite($this->out, "ok\n");
 
         try {
