@@ -2,9 +2,9 @@ package jobs
 
 import (
 	"log"
-	"runner"
-	"runner/message"
 
+	"github.com/ruvents/runner"
+	"github.com/ruvents/runner/message"
 	"google.golang.org/protobuf/proto"
 )
 

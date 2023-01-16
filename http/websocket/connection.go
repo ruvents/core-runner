@@ -2,11 +2,11 @@ package websocket
 
 import (
 	"log"
-	"runner"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/ruvents/runner"
 )
 
 const (

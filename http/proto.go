@@ -6,10 +6,10 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"runner"
-	"runner/message"
 	"strings"
 
+	"github.com/ruvents/runner"
+	"github.com/ruvents/runner/message"
 	"google.golang.org/protobuf/proto"
 )
 

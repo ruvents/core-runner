@@ -11,12 +11,13 @@ import (
 	"net/rpc"
 	"net/rpc/jsonrpc"
 	"os"
-	"runner"
-	rhttp "runner/http"
-	"runner/http/websocket"
-	"runner/jobs"
-	"runner/message"
 	"runtime"
+
+	"github.com/ruvents/runner"
+	rhttp "github.com/ruvents/runner/http"
+	"github.com/ruvents/runner/http/websocket"
+	"github.com/ruvents/runner/jobs"
+	"github.com/ruvents/runner/message"
 )
 
 var wsPool *websocket.Pool

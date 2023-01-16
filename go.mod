@@ -1,4 +1,4 @@
-module runner
+module github.com/ruvents/runner
 
 go 1.19
 
