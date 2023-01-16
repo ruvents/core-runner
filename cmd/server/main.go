@@ -13,11 +13,11 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/ruvents/runner"
-	rhttp "github.com/ruvents/runner/http"
-	"github.com/ruvents/runner/http/websocket"
-	"github.com/ruvents/runner/jobs"
-	"github.com/ruvents/runner/message"
+	runner "github.com/ruvents/corerunner"
+	rhttp "github.com/ruvents/corerunner/http"
+	"github.com/ruvents/corerunner/http/websocket"
+	"github.com/ruvents/corerunner/jobs"
+	"github.com/ruvents/corerunner/message"
 )
 
 var wsPool *websocket.Pool

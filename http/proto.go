@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ruvents/runner"
-	"github.com/ruvents/runner/message"
+	runner "github.com/ruvents/corerunner"
+	"github.com/ruvents/corerunner/message"
 	"google.golang.org/protobuf/proto"
 )
 

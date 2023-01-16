@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/ruvents/runner"
+	runner "github.com/ruvents/corerunner"
 )
 
 const (

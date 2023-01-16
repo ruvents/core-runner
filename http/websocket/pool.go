@@ -3,7 +3,7 @@ package websocket
 import (
 	"sync"
 
-	"github.com/ruvents/runner"
+	runner "github.com/ruvents/corerunner"
 )
 
 // Опциональный пул соединений, используемый для подписки на топики и рассылки

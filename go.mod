@@ -1,4 +1,4 @@
-module github.com/ruvents/runner
+module github.com/ruvents/corerunner
 
 go 1.19
 
