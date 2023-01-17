@@ -29,14 +29,14 @@ type Pool struct {
 
 // Start запускает n процессов, указанных в argv. Повторный запуск возможен
 // только после выполнения Stop.
-func (p *Pool) Start(argv []string, n int) error {
+func (p *Pool) Start(argv []string, n int, env []string) error {
 	if len(p.pool) != 0 {
 		return errors.New("already started")
 	}
 	for i := 0; i < n; i++ {
 		wrk := Worker{}
 		start := time.Now()
-		err := wrk.Start(argv)
+		err := wrk.Start(argv, env)
 		if err != nil {
 			return err
 		}
@@ -82,7 +82,6 @@ func (p *Pool) getWorker() *Worker {
 type Worker struct {
 	cmd   *exec.Cmd
 	read  *bufio.Reader
-	argv  []string
 	write *bufio.Writer
 	mu    sync.Mutex
 }
@@ -93,12 +92,18 @@ type Worker struct {
 // процесса (сейчас это реализовано отловом EOF в любом из pipe'ов).
 // exec.Run(), судя по всему, не дает параллельно читать pipe'ы, как и
 // последовательный запуск exec.Start() и exec.Wait().
-func (wrk *Worker) Start(argv []string) error {
+func (wrk *Worker) Start(argv []string, env []string) error {
 	if wrk.cmd != nil {
 		return errors.New("already started")
 	}
 
-	cmd := exec.Command(argv[0], argv[1:]...)
+	var cmd *exec.Cmd
+	if len(argv) == 1 {
+		cmd = exec.Command(argv[0])
+	} else {
+		cmd = exec.Command(argv[0], argv[1:]...)
+	}
+	cmd.Env = env
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -142,7 +147,6 @@ func (wrk *Worker) Start(argv []string) error {
 		return errors.New(string(msg))
 	}
 	wrk.cmd = cmd
-	wrk.argv = argv
 
 	return nil
 }
@@ -240,8 +244,10 @@ func (wrk *Worker) Restart(kill bool) error {
 	if err = wrk.cmd.Wait(); err != nil {
 		log.Println("restart wait error:", err)
 	}
+	argv := wrk.cmd.Args
+	env := wrk.cmd.Env
 	wrk.cmd = nil
-	return wrk.Start(wrk.argv)
+	return wrk.Start(argv, env)
 }
 
 func (wrk *Worker) readMsg() ([]byte, error) {

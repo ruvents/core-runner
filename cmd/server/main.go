@@ -35,13 +35,14 @@ func main() {
 	rpcAddr := flag.String("rpc", "", "Start RPC handler on specified address")
 	flag.Parse()
 
+	env := os.Environ()
 	// RPC
 	if *rpcAddr != "" {
 		if *jobsExe != "" {
 			mustExist(*jobsExe)
 			var wrks runner.Pool
 			// Jobs
-			if err := wrks.Start([]string{"php", *jobsExe}, 2); err != nil {
+			if err := wrks.Start([]string{"php", *jobsExe}, 2, env); err != nil {
 				log.Fatal("error starting: ", err)
 			}
 			defer wrks.Stop()
@@ -55,7 +56,7 @@ func main() {
 	if *httpExe != "" && *wrksNum > 0 {
 		mustExist(*httpExe)
 		wrks := runner.Pool{}
-		if err := wrks.Start([]string{"php", *httpExe}, *wrksNum); err != nil {
+		if err := wrks.Start([]string{"php", *httpExe}, *wrksNum, env); err != nil {
 			log.Fatal("error starting: ", err)
 		}
 		defer wrks.Stop()
