@@ -33,21 +33,31 @@ func (p *Pool) Start(argv []string, n int, env []string) error {
 	if len(p.pool) != 0 {
 		return errors.New("already started")
 	}
+	var wg sync.WaitGroup
+	wg.Add(n)
+	var werr error
 	for i := 0; i < n; i++ {
-		wrk := Worker{}
-		start := time.Now()
-		err := wrk.Start(argv, env)
-		if err != nil {
-			return err
-		}
-		p.pool = append(p.pool, &wrk)
-		log.Printf(
-			"PID %d: Worker started in %s",
-			wrk.cmd.Process.Pid,
-			time.Since(start),
-		)
+		go func() {
+			defer wg.Done()
+			wrk := Worker{}
+			start := time.Now()
+			err := wrk.Start(argv, env)
+			p.mu.Lock()
+			defer p.mu.Unlock()
+			if err != nil {
+				werr = err
+				return
+			}
+			p.pool = append(p.pool, &wrk)
+			log.Printf(
+				"PID %d: Worker started in %s",
+				wrk.cmd.Process.Pid,
+				time.Since(start),
+			)
+		}()
 	}
-	return nil
+	wg.Wait()
+	return werr
 }
 
 // Send отправляет данные следующему в очереди процессу для обработки и
