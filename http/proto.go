@@ -56,6 +56,7 @@ func (h *ProtoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	d, err := h.wrks.Send(buf)
 	if err != nil {
+		log.Print("http handling error:", err)
 		http.Error(w, ErrWeb500, 500)
 		return
 	}
