@@ -22,7 +22,7 @@ class Messages
 method (	
 url (	6
 headers (2%.runner.messages.Request.HeadersEntry
-body (	2
+body (2
 files (2#.runner.messages.Request.FilesEntry.
 HeadersEntry
 key (	
@@ -35,7 +35,7 @@ FilesEntry
 
 statusCode (7
 headers (2&.runner.messages.Response.HeadersEntry
-body (	.
+body (.
 HeadersEntry
 key (	
 value (	:8"7

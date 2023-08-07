@@ -66,7 +66,7 @@ func (h *ProtoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(k, h)
 	}
 	w.WriteHeader(int(res.StatusCode))
-	fmt.Fprint(w, res.Body)
+	fmt.Fprint(w, string(res.Body))
 }
 
 func (h *ProtoHandler) formRequest(r *http.Request) (*message.Request, error) {
@@ -101,7 +101,7 @@ func (h *ProtoHandler) formRequest(r *http.Request) (*message.Request, error) {
 		if err != nil {
 			return nil, err
 		}
-		m.Body = string(d)
+		m.Body = d
 	}
 
 	return &m, nil

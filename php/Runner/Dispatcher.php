@@ -58,8 +58,6 @@ final class Dispatcher {
     private function send(string $data): void {
         fwrite($this->out, strlen($data)."\n");
 
-        // FIXME: 2048 здесь указывать неверно, т.к. это количество символов, а
-        // должно быть байт.
         foreach (str_split($data, 2048) as $spl) {
             fwrite($this->out, $spl);
         }

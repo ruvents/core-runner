@@ -22,7 +22,7 @@ class Response extends \Google\Protobuf\Internal\Message
      */
     private $headers;
     /**
-     * Generated from protobuf field <code>string body = 3;</code>
+     * Generated from protobuf field <code>bytes body = 3;</code>
      */
     protected $body = '';
 
@@ -87,7 +87,7 @@ class Response extends \Google\Protobuf\Internal\Message
     }
 
     /**
-     * Generated from protobuf field <code>string body = 3;</code>
+     * Generated from protobuf field <code>bytes body = 3;</code>
      * @return string
      */
     public function getBody()
@@ -96,13 +96,13 @@ class Response extends \Google\Protobuf\Internal\Message
     }
 
     /**
-     * Generated from protobuf field <code>string body = 3;</code>
+     * Generated from protobuf field <code>bytes body = 3;</code>
      * @param string $var
      * @return $this
      */
     public function setBody($var)
     {
-        GPBUtil::checkString($var, True);
+        GPBUtil::checkString($var, False);
         $this->body = $var;
 
         return $this;
