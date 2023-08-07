@@ -3,7 +3,7 @@
 ## Запуск
 
 ```sh
-go run cmd/server/main.go -n 8 -l :3000 -s php/public php/index.php
+go run cmd/server/main.go -n 8 -l :3000 -s php/public -p php/http.php
 ```
 
 ## Компиляция proto-файлов
@@ -22,3 +22,10 @@ protoc --go_out=. messages.proto
 (cd php && composer install)
 protoc --php_out=php/ messages.proto
 ```
+
+## Материалы
+
+### Protobuf
+
+[Language Guide (proto 3)](https://protobuf.dev/programming-guides/proto3/)
+[PHP Generated Code Guide](https://protobuf.dev/reference/php/php-generated/)
