@@ -96,6 +96,11 @@ func (h *ProtoHandler) formRequest(r *http.Request) (*message.Request, error) {
 			return nil, err
 		}
 		m.Files = fs
+		m.Form = make(map[string]string)
+		for k, v := range r.MultipartForm.Value {
+			// Пока что берем только первое значение.
+			m.Form[k] = v[0]
+		}
 	} else {
 		d, err := io.ReadAll(r.Body)
 		if err != nil {

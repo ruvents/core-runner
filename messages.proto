@@ -10,6 +10,7 @@ message Request {
 	map<string, string> headers = 3;
 	bytes body = 4;
 	map<string, File> files = 5;
+	map<string, string> form = 6;
 }
 
 message Response {

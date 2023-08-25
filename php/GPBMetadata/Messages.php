@@ -16,21 +16,25 @@ class Messages
         }
         $pool->internalAddGeneratedFile(
             '
-Ë
-messages.protorunner.messages"•
+ª
+messages.protorunner.messages"ô
 Request
 method (	
 url (	6
 headers (2%.runner.messages.Request.HeadersEntry
 body (2
-files (2#.runner.messages.Request.FilesEntry.
+files (2#.runner.messages.Request.FilesEntry0
+form (2".runner.messages.Request.FormEntry.
 HeadersEntry
 key (	
 value (	:8C
 
 FilesEntry
 key (	$
-value (2.runner.messages.File:8"•
+value (2.runner.messages.File:8+
+	FormEntry
+key (	
+value (	:8"•
 Response
 
 statusCode (7

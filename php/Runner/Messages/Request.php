@@ -33,6 +33,10 @@ class Request extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>map<string, .runner.messages.File> files = 5;</code>
      */
     private $files;
+    /**
+     * Generated from protobuf field <code>map<string, string> form = 6;</code>
+     */
+    private $form;
 
     /**
      * Constructor.
@@ -45,6 +49,7 @@ class Request extends \Google\Protobuf\Internal\Message
      *     @type array|\Google\Protobuf\Internal\MapField $headers
      *     @type string $body
      *     @type array|\Google\Protobuf\Internal\MapField $files
+     *     @type array|\Google\Protobuf\Internal\MapField $form
      * }
      */
     public function __construct($data = NULL) {
@@ -158,6 +163,28 @@ class Request extends \Google\Protobuf\Internal\Message
     {
         $arr = GPBUtil::checkMapField($var, \Google\Protobuf\Internal\GPBType::STRING, \Google\Protobuf\Internal\GPBType::MESSAGE, \Runner\Messages\File::class);
         $this->files = $arr;
+
+        return $this;
+    }
+
+    /**
+     * Generated from protobuf field <code>map<string, string> form = 6;</code>
+     * @return \Google\Protobuf\Internal\MapField
+     */
+    public function getForm()
+    {
+        return $this->form;
+    }
+
+    /**
+     * Generated from protobuf field <code>map<string, string> form = 6;</code>
+     * @param array|\Google\Protobuf\Internal\MapField $var
+     * @return $this
+     */
+    public function setForm($var)
+    {
+        $arr = GPBUtil::checkMapField($var, \Google\Protobuf\Internal\GPBType::STRING, \Google\Protobuf\Internal\GPBType::STRING);
+        $this->form = $arr;
 
         return $this;
     }
