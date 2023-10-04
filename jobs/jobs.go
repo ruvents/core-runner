@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"log"
+	"time"
 
 	runner "github.com/ruvents/corerunner"
 	"github.com/ruvents/corerunner/message"
@@ -43,9 +44,10 @@ func (j *Pool) Run() {
 			if err != nil {
 				log.Print("protobuf serialization error : ", err)
 			}
-			res, err := j.wrks.Send([]byte(buf))
+			timeout, _ := time.ParseDuration("1000ms")
+			res, err := j.wrks.Send([]byte(buf), timeout)
 			if err != nil {
-				log.Print("request error: ", err)
+				log.Print("request error:", err)
 			}
 			if string(res) != "ok" {
 				log.Print(`jobs worker did not respond with "ok"`)

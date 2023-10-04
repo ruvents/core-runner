@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	runner "github.com/ruvents/corerunner"
 	"github.com/ruvents/corerunner/message"
@@ -54,7 +55,8 @@ func (h *ProtoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ErrWeb500, 500)
 		return
 	}
-	d, err := h.wrks.Send(buf)
+	timeout, _ := time.ParseDuration("1000ms")
+	d, err := h.wrks.Send(buf, timeout)
 	if err != nil {
 		log.Print("http handling error:", err)
 		http.Error(w, ErrWeb500, 500)
