@@ -202,7 +202,7 @@ func (wrk *Worker) Stop() error {
 		return errors.New("Worker is not running")
 	}
 	var err error
-	if _, err := wrk.write.Write([]byte("exit\n")); err != nil {
+	if _, err := wrk.write.Write([]byte("\n")); err != nil {
 		return err
 	}
 	if err = wrk.write.Flush(); err != nil {

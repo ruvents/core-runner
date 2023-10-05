@@ -36,7 +36,7 @@ final class Dispatcher {
         while (($line = fgets($this->in)) !== false) {
             $line = rtrim($line, "\n");
 
-            if ($line === "exit") {
+            if (strlen($line) === 0) {
                 break;
             }
 
