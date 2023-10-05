@@ -42,18 +42,20 @@ func (j *Pool) Run() {
 			if !ok {
 				return
 			}
+			start := time.Now()
+			log.Printf("job: %s started\n", req.Name)
 			buf, err := proto.Marshal(req)
 			if err != nil {
-				log.Print("protobuf serialization error : ", err)
+				log.Print("job:protobuf serialization error : ", err)
 			}
-			timeout, _ := time.ParseDuration("1000ms")
-			res, err := j.wrks.Send([]byte(buf), timeout)
 			res, err := j.wrks.Send([]byte(buf), j.timeout)
 			if err != nil {
-				log.Print("request error:", err)
+				log.Print("job: request error: ", err)
 			}
 			if string(res) != "ok" {
-				log.Print(`jobs worker did not respond with "ok"`)
+				log.Print(`job:worker did not respond with "ok"`)
+			} else {
+				log.Printf("job:%s finished (%s)\n", req.Name, time.Since(start))
 			}
 		}
 	}

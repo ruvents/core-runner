@@ -39,6 +39,7 @@ const (
 )
 
 func (h *ProtoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	if h.cors {
 		w.Header().Set("access-control-allow-origin", "*")
 		w.Header().Set("access-control-allow-methods", "PUT,GET,POST,PATCH,DELETE,OPTIONS")
@@ -70,6 +71,7 @@ func (h *ProtoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(int(res.StatusCode))
 	fmt.Fprint(w, string(res.Body))
+	log.Printf("%d %s %s (%s)\n", res.StatusCode, r.Method, r.URL.Path, time.Since(start))
 }
 
 func (h *ProtoHandler) formRequest(r *http.Request) (*message.Request, error) {
