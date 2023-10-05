@@ -12,6 +12,7 @@ import (
 	"net/rpc/jsonrpc"
 	"os"
 	"runtime"
+	"time"
 
 	runner "github.com/ruvents/corerunner"
 	rhttp "github.com/ruvents/corerunner/http"
@@ -46,7 +47,8 @@ func main() {
 				log.Fatal("error starting: ", err)
 			}
 			defer wrks.Stop()
-			jobsPool = jobs.New(&wrks)
+			timeout, _ := time.ParseDuration("30m")
+			jobsPool = jobs.New(&wrks, timeout)
 			go jobsPool.Run()
 		}
 		go startRPC(*rpcAddr)
@@ -64,7 +66,8 @@ func main() {
 		// статический файл. При его отсутствии передаем запрос
 		// PHP-приложению.
 		handler := rhttp.NewStaticHandler(*static, *maxAge, *cors)
-		handler.Next(rhttp.NewProtoHandler(&wrks, *cors))
+		timeout, _ := time.ParseDuration("1m")
+		handler.Next(rhttp.NewProtoHandler(&wrks, *cors, timeout))
 		http.Handle("/", handler)
 	}
 

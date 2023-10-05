@@ -11,14 +11,16 @@ import (
 
 // Простые эфемерные очереди.
 type Pool struct {
-	queue chan *message.JobRequest
-	wrks  *runner.Pool
+	queue   chan *message.JobRequest
+	timeout time.Duration
+	wrks    *runner.Pool
 }
 
-func New(wrks *runner.Pool) *Pool {
+func New(wrks *runner.Pool, timeout time.Duration) *Pool {
 	return &Pool{
-		wrks:  wrks,
-		queue: make(chan *message.JobRequest, 128),
+		wrks:    wrks,
+		timeout: timeout,
+		queue:   make(chan *message.JobRequest, 128),
 	}
 }
 
@@ -46,6 +48,7 @@ func (j *Pool) Run() {
 			}
 			timeout, _ := time.ParseDuration("1000ms")
 			res, err := j.wrks.Send([]byte(buf), timeout)
+			res, err := j.wrks.Send([]byte(buf), j.timeout)
 			if err != nil {
 				log.Print("request error:", err)
 			}

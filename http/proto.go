@@ -15,8 +15,9 @@ import (
 )
 
 type ProtoHandler struct {
-	wrks *runner.Pool
-	cors bool
+	wrks    *runner.Pool
+	cors    bool
+	timeout time.Duration
 }
 
 // NewProtoHandler инициализирует новый обработчик HTTP-запросов, способный
@@ -24,10 +25,11 @@ type ProtoHandler struct {
 // происходит посредством сообщений в формате protobuf. Если len(wrks) == 0, то
 // на все запросы отдается 404. При cors == true всем ответам будут добавляться
 // отключающие CORS заголовки.
-func NewProtoHandler(wrks *runner.Pool, cors bool) *ProtoHandler {
+func NewProtoHandler(wrks *runner.Pool, cors bool, timeout time.Duration) *ProtoHandler {
 	return &ProtoHandler{
-		wrks: wrks,
-		cors: cors,
+		wrks:    wrks,
+		cors:    cors,
+		timeout: timeout,
 	}
 }
 
@@ -55,8 +57,7 @@ func (h *ProtoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ErrWeb500, 500)
 		return
 	}
-	timeout, _ := time.ParseDuration("1000ms")
-	d, err := h.wrks.Send(buf, timeout)
+	d, err := h.wrks.Send(buf, h.timeout)
 	if err != nil {
 		log.Print("http handling error:", err)
 		http.Error(w, ErrWeb500, 500)
