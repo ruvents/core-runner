@@ -58,7 +58,10 @@ func (h *ProtoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ErrWeb500, 500)
 		return
 	}
-	d, err := h.wrks.Send(buf, h.timeout)
+	wrkCh := h.wrks.Send(buf, h.timeout)
+	wrkRes := <-wrkCh
+	d := wrkRes.Res
+	err = wrkRes.Err
 	if err != nil {
 		log.Print("http handling error:", err)
 		http.Error(w, ErrWeb500, 500)

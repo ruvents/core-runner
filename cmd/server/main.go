@@ -47,9 +47,9 @@ func main() {
 				log.Fatal("error starting: ", err)
 			}
 			defer wrks.Stop()
+			jobsPool = jobs.New(&wrks)
 			timeout, _ := time.ParseDuration("30m")
-			jobsPool = jobs.New(&wrks, timeout)
-			go jobsPool.Run()
+			go jobsPool.Run(timeout)
 		}
 		go startRPC(*rpcAddr)
 	}
@@ -66,7 +66,7 @@ func main() {
 		// статический файл. При его отсутствии передаем запрос
 		// PHP-приложению.
 		handler := rhttp.NewStaticHandler(*static, *maxAge, *cors)
-		timeout, _ := time.ParseDuration("1m")
+		timeout, _ := time.ParseDuration("30s")
 		handler.Next(rhttp.NewProtoHandler(&wrks, *cors, timeout))
 		http.Handle("/", handler)
 	}

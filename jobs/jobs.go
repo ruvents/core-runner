@@ -11,16 +11,14 @@ import (
 
 // Простые эфемерные очереди.
 type Pool struct {
-	queue   chan *message.JobRequest
-	timeout time.Duration
-	wrks    *runner.Pool
+	queue chan *message.JobRequest
+	wrks  *runner.Pool
 }
 
-func New(wrks *runner.Pool, timeout time.Duration) *Pool {
+func New(wrks *runner.Pool) *Pool {
 	return &Pool{
-		wrks:    wrks,
-		timeout: timeout,
-		queue:   make(chan *message.JobRequest, 128),
+		wrks:  wrks,
+		queue: make(chan *message.JobRequest, 128),
 	}
 }
 
@@ -35,7 +33,7 @@ func (j *Pool) Stop() {
 }
 
 // Run запускает обработку эфемерных очередей, блокируя выполнение.
-func (j *Pool) Run() {
+func (j *Pool) Run(timeout time.Duration) {
 	for {
 		select {
 		case req, ok := <-j.queue:
@@ -48,7 +46,10 @@ func (j *Pool) Run() {
 			if err != nil {
 				log.Print("job:protobuf serialization error : ", err)
 			}
-			res, err := j.wrks.Send([]byte(buf), j.timeout)
+			wrkCh := j.wrks.Send([]byte(buf), timeout)
+			wrkRes := <-wrkCh
+			res := wrkRes.Res
+			err = wrkRes.Err
 			if err != nil {
 				log.Print("job: request error: ", err)
 			}
