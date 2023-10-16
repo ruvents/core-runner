@@ -18,7 +18,7 @@ type Pool struct {
 func New(wrks *runner.Pool) *Pool {
 	return &Pool{
 		wrks:  wrks,
-		queue: make(chan *message.JobRequest, 128),
+		queue: make(chan *message.JobRequest, 512),
 	}
 }
 
