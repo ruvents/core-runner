@@ -9,7 +9,7 @@ final class RPC {
         [$host, $port] = explode(':', $address, 2);
         $errno = 0;
         $error = '';
-        $socket = fsockopen($address, (int) $port, $errno, $error);
+        $socket = fsockopen($host, (int) $port, $errno, $error);
 
         if ($socket === false) {
             throw new \RuntimeException(
