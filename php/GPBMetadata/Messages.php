@@ -16,7 +16,7 @@ class Messages
         }
         $pool->internalAddGeneratedFile(
             '
-ª
+»
 messages.protorunner.messages"ô
 Request
 method (	
@@ -46,11 +46,12 @@ statusCode (7
 File
 filename (	
 tmpPath (	
-size ("+
+size ("<
 
 JobRequest
 name (	
-payload (	B
+payload (	
+timeout (B
 Zmessage/bproto3'
         , true);
 

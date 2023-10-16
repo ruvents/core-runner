@@ -33,7 +33,7 @@ func (j *Pool) Stop() {
 }
 
 // Run запускает обработку эфемерных очередей, блокируя выполнение.
-func (j *Pool) Run(timeout time.Duration) {
+func (j *Pool) Run() {
 	for {
 		select {
 		case req, ok := <-j.queue:
@@ -46,7 +46,10 @@ func (j *Pool) Run(timeout time.Duration) {
 			if err != nil {
 				log.Print("job:protobuf serialization error : ", err)
 			}
-			wrkCh := j.wrks.Send([]byte(buf), timeout)
+			wrkCh := j.wrks.Send(
+				[]byte(buf),
+				time.Duration(req.Timeout)*time.Millisecond,
+			)
 			wrkRes := <-wrkCh
 			res := wrkRes.Res
 			err = wrkRes.Err
@@ -54,9 +57,9 @@ func (j *Pool) Run(timeout time.Duration) {
 				log.Print("job: request error: ", err)
 			}
 			if string(res) != "ok" {
-				log.Print(`job:worker did not respond with "ok"`)
+				log.Print(`job: worker did not respond with "ok"`)
 			} else {
-				log.Printf("job:%s finished (%s)\n", req.Name, time.Since(start))
+				log.Printf("job: %s finished (%s)\n", req.Name, time.Since(start))
 			}
 		}
 	}

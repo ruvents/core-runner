@@ -21,6 +21,12 @@ class JobRequest extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>string payload = 2;</code>
      */
     protected $payload = '';
+    /**
+     * В мс.
+     *
+     * Generated from protobuf field <code>uint64 timeout = 3;</code>
+     */
+    protected $timeout = 0;
 
     /**
      * Constructor.
@@ -30,6 +36,8 @@ class JobRequest extends \Google\Protobuf\Internal\Message
      *
      *     @type string $name
      *     @type string $payload
+     *     @type int|string $timeout
+     *           В мс.
      * }
      */
     public function __construct($data = NULL) {
@@ -77,6 +85,32 @@ class JobRequest extends \Google\Protobuf\Internal\Message
     {
         GPBUtil::checkString($var, True);
         $this->payload = $var;
+
+        return $this;
+    }
+
+    /**
+     * В мс.
+     *
+     * Generated from protobuf field <code>uint64 timeout = 3;</code>
+     * @return int|string
+     */
+    public function getTimeout()
+    {
+        return $this->timeout;
+    }
+
+    /**
+     * В мс.
+     *
+     * Generated from protobuf field <code>uint64 timeout = 3;</code>
+     * @param int|string $var
+     * @return $this
+     */
+    public function setTimeout($var)
+    {
+        GPBUtil::checkUint64($var);
+        $this->timeout = $var;
 
         return $this;
     }

@@ -48,8 +48,7 @@ func main() {
 			}
 			defer wrks.Stop()
 			jobsPool = jobs.New(&wrks)
-			timeout, _ := time.ParseDuration("30m")
-			go jobsPool.Run(timeout)
+			go jobsPool.Run()
 		}
 		go startRPC(*rpcAddr)
 	}
@@ -160,6 +159,7 @@ func (r *RPCHandler) RunJob(args []any, reply *bool) error {
 	req := message.JobRequest{}
 	req.Name = args[0].(string)
 	req.Payload = args[1].(string)
+	req.Timeout = uint64(args[2].(float64))
 	jobsPool.Queue(&req)
 	*reply = true
 	return nil
