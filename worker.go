@@ -24,33 +24,34 @@ const (
 )
 
 type Pool struct {
-	pool    []*Worker
-	lastWrk int
-	mu      sync.Mutex
+	pool  []*Worker
+	queue chan WorkerJob
+	mu    sync.Mutex
 }
 
-// Start запускает n процессов, указанных в argv с переменными окружения env.
+// Start запускает n воркеров, указанных в argv с переменными окружения env.
 // Повторный запуск возможен только после выполнения Stop.
 func (p *Pool) Start(argv []string, n int, env []string) error {
 	if len(p.pool) != 0 {
 		return errors.New("already started")
 	}
+	p.queue = make(chan WorkerJob, n*512)
 	var wg sync.WaitGroup
 	wg.Add(n)
 	var werr error
 	for i := 0; i < n; i++ {
 		go func() {
 			defer wg.Done()
-			wrk := NewWorker()
+			wrk := NewWorker(p.queue)
 			start := time.Now()
 			err := wrk.Start(argv, env)
-			p.mu.Lock()
-			defer p.mu.Unlock()
 			if err != nil {
 				werr = err
 				return
 			}
+			p.mu.Lock()
 			p.pool = append(p.pool, wrk)
+			p.mu.Unlock()
 			log.Printf(
 				"PID %d: worker started in %s",
 				wrk.cmd.Process.Pid,
@@ -62,29 +63,22 @@ func (p *Pool) Start(argv []string, n int, env []string) error {
 	return werr
 }
 
-// Send отправляет данные следующему в очереди процессу для обработки и
-// возвращает ответ из него. Если данные не получены через timeout, процесс
-// перезапускается и возвращается ошибка.
+// Send добавляет данные data в очередь на обработку воркером. Возвращает
+// канал, из которого можно получить ответ от воркера. Если ответ не получен
+// через timeout, воркер перезапускается и возвращается ошибка.
 func (p *Pool) Send(data []byte, timeout time.Duration) chan WorkerResult {
-	return p.getWorker().Send(data, timeout)
+	res := make(chan WorkerResult)
+	p.queue <- WorkerJob{data: data, res: res, timeout: timeout}
+	return res
 }
 
 // Stop останавливает все запущенные процессы и очищает пул.
 func (p *Pool) Stop() {
+	close(p.queue)
 	for _, wrk := range p.pool {
 		wrk.Stop()
 	}
 	p.pool = []*Worker{}
-	p.lastWrk = 0
-}
-
-func (p *Pool) getWorker() *Worker {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	res := p.pool[p.lastWrk]
-	p.lastWrk = (p.lastWrk + 1) % len(p.pool)
-	return res
 }
 
 type Worker struct {
@@ -95,7 +89,6 @@ type Worker struct {
 	argv    []string
 	env     []string
 	queue   chan WorkerJob
-	looping bool
 }
 
 type WorkerResult struct {
@@ -109,10 +102,8 @@ type WorkerJob struct {
 	res     chan WorkerResult
 }
 
-func NewWorker() *Worker {
-	return &Worker{
-		queue: make(chan WorkerJob, 512),
-	}
+func NewWorker(queue chan WorkerJob) *Worker {
+	return &Worker{queue: queue}
 }
 
 // Start запускает процесс с указанными аргументами argv. Этот метод не
@@ -178,19 +169,19 @@ func (wrk *Worker) Start(argv []string, env []string) error {
 		return errors.New(string(msg))
 	}
 	wrk.cmd = cmd
+	// Запуск бесконечного цикла обработки сообщений.
 	go wrk.jobLoop()
 
 	return nil
 }
 
 func (wrk *Worker) jobLoop() {
-	if wrk.looping == true {
-		return
-	}
-	wrk.looping = true
 	for {
 		select {
-		case job := <-wrk.queue:
+		case job, ok := <-wrk.queue:
+			if ok == false {
+				return
+			}
 			job.res <- *wrk.timedSend(job.data, job.timeout)
 		}
 	}
@@ -256,14 +247,6 @@ func (wrk *Worker) Kill() error {
 
 // send отправляет данные процессу для обработки, дожидается ответа и
 // возвращает его.
-func (wrk *Worker) Send(data []byte, timeout time.Duration) chan WorkerResult {
-	res := make(chan WorkerResult)
-	wrk.queue <- WorkerJob{data: data, res: res, timeout: timeout}
-	return res
-}
-
-// send отправляет данные процессу для обработки, дожидается ответа и
-// возвращает его.
 func (wrk *Worker) send(data []byte) ([]byte, error) {
 	wrk.mu.Lock()
 	defer wrk.mu.Unlock()
@@ -282,7 +265,7 @@ func (wrk *Worker) send(data []byte) ([]byte, error) {
 	return res, nil
 }
 
-// Restart перезапускает процесс. Если kill = true, то процессу посылается
+// Restart перезапускает воркер. Если kill = true, то процессу посылается
 // SIGKILL, иначе ожидается его естественное завершение.
 func (wrk *Worker) Restart(kill bool) error {
 	var err error
