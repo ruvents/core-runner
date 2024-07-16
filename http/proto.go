@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -15,21 +16,31 @@ import (
 )
 
 type ProtoHandler struct {
-	wrks    *runner.Pool
-	cors    bool
-	timeout time.Duration
+	wrks          *runner.Pool
+	cors          bool
+	timeout       time.Duration
+	timeoutsCount uint
+	maxTimeouts   uint
 }
 
 // NewProtoHandler инициализирует новый обработчик HTTP-запросов, способный
 // отдавать результат выполнения wrks.Send(). Общение с процессами воркеров
 // происходит посредством сообщений в формате protobuf. Если len(wrks) == 0, то
 // на все запросы отдается 404. При cors == true всем ответам будут добавляться
-// отключающие CORS заголовки.
-func NewProtoHandler(wrks *runner.Pool, cors bool, timeout time.Duration) *ProtoHandler {
+// отключающие CORS заголовки. Если timeout превышен при обработке запроса 
+// воркером, воркер перезапускается. Если timeout превышен maxTimeouts раз
+// подряд, то убивается весь процесс corerunner.
+func NewProtoHandler(
+	wrks *runner.Pool,
+	cors bool,
+	timeout time.Duration,
+	maxTimeouts uint,
+) *ProtoHandler {
 	return &ProtoHandler{
-		wrks:    wrks,
-		cors:    cors,
-		timeout: timeout,
+		wrks:        wrks,
+		cors:        cors,
+		timeout:     timeout,
+		maxTimeouts: maxTimeouts,
 	}
 }
 
@@ -63,10 +74,17 @@ func (h *ProtoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	d := wrkRes.Res
 	err = wrkRes.Err
 	if err != nil {
+		if errors.Is(err, runner.ErrWorkerTimedOut) {
+			h.timeoutsCount = h.timeoutsCount + 1
+			if h.timeoutsCount == h.maxTimeouts {
+				log.Fatal("maximum number of subsequent timeouts was reached")
+			}
+		}
 		log.Print("http handling error:", err)
 		http.Error(w, ErrWeb500, 500)
 		return
 	}
+	h.timeoutsCount = 0
 	var res message.Response
 	proto.Unmarshal(d, &res)
 	for k, h := range res.Headers {

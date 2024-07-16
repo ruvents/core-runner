@@ -71,8 +71,10 @@ func main() {
 		// статический файл. При его отсутствии передаем запрос
 		// PHP-приложению.
 		handler := rhttp.NewStaticHandler(*static, *maxAge, *cors)
-		timeout, _ := time.ParseDuration("30s")
-		handler.Next(rhttp.NewProtoHandler(&wrks, *cors, timeout))
+		timeout := time.Second * 30
+		handler.Next(rhttp.NewProtoHandler(
+			&wrks, *cors, timeout, uint(*wrksNum) * 2,
+		))
 		http.Handle("/", handler)
 	}
 

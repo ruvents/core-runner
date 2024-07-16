@@ -23,6 +23,10 @@ const (
 	PipeChunkSize = 2048
 )
 
+var (
+	ErrWorkerTimedOut = errors.New("worker timed out")
+)
+
 type Pool struct {
 	pool  []*Worker
 	queue chan WorkerJob
@@ -360,7 +364,9 @@ func (wrk *Worker) timedSend(data []byte, timeout time.Duration) *WorkerResult {
 		return &WorkerResult{
 			nil,
 			fmt.Errorf(
-				"worker timed out after %s",
+				"%w: PID %d, after %s",
+				ErrWorkerTimedOut,
+				wrk.cmd.Process.Pid,
 				timeout,
 			),
 		}
