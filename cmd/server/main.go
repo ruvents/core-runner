@@ -19,13 +19,19 @@ import (
 	"github.com/ruvents/corerunner/http/websocket"
 	"github.com/ruvents/corerunner/jobs"
 	"github.com/ruvents/corerunner/message"
+	"github.com/ruvents/corerunner/redis"
 )
 
 var wsPool *websocket.Pool
 var jobsPool *jobs.Pool
+var rPublisher *redis.Connection
+var rListener *redis.Connection
+var instanceID runner.UUID4
 
 // Пример приложения, собранного из библиотеки runner.
 func main() {
+	instanceID = runner.NewUUID4()
+
 	httpExe := flag.String("p", "", "Run specified PHP-file for HTTP handling. HTTP workers will not be started if flag is omitted.")
 	wrksNum := flag.Int("n", runtime.NumCPU(), "Number of HTTP-workers to start")
 	addr := flag.String("l", "127.0.0.1:3000", "Address HTTP-server will listen to")
@@ -72,6 +78,42 @@ func main() {
 
 	// Websocket
 	wsPool = websocket.NewPool()
+
+	rListener, err := redis.Connect("localhost:6379")
+	if err != nil {
+		log.Fatalf("redis: %s", err)
+	}
+	defer rListener.Close()
+	err = rListener.PSubscribe("chat:*")
+	if err != nil {
+		log.Fatalf("redis: %s", err)
+	}
+	go func() {
+		for {
+			res, err := rListener.ReadResponse()
+			if err != nil {
+				log.Fatalf("redis: %s", err)
+			}
+			if len(res) != 4 && res[0] != "pmessage" {
+				continue
+			}
+			topic := res[2]
+			payload := res[3]
+			sourceID := topic[5:41]
+			if sourceID == string(instanceID) {
+				return
+			}
+			wsPool.Publish(topic[42:], []byte(payload), "")
+		}
+	}()
+
+	r, err := redis.Connect("localhost:6379")
+	if err != nil {
+		log.Fatalf("redis: %s", err)
+	}
+	rPublisher = r
+
+	defer rPublisher.Close()
 	http.Handle("/ws", websocket.NewHandler(
 		func(msg []byte, conn *websocket.Connection) []byte {
 			cmd := struct {
@@ -108,7 +150,7 @@ func main() {
 		log.Printf(`http: serving PHP application "%s"`, *httpExe)
 	}
 	log.Print("http: listening on " + *addr)
-	err := http.ListenAndServe(*addr, nil)
+	err = http.ListenAndServe(*addr, nil)
 
 	if err != nil {
 		log.Fatal(err)
@@ -149,7 +191,13 @@ func (r *RPCHandler) PublishMessage(args []string, reply *bool) error {
 	if err != nil {
 		return fmt.Errorf("json marshaling error: %v", err)
 	}
-	wsPool.Publish(args[0], []byte(msg), "")
+	wsPool.Publish(m.Topic, []byte(msg), "")
+	// Распространяем сообщение по остальным инстансам corerunner, чтобы
+	// они могли разослать сообщения по своим WS-подключениям.
+	rPublisher.Publish(
+		"chat:" + string(instanceID) + ":" + m.Topic,
+		string(instanceID) + m.Payload,
+	)
 	*reply = true
 	return nil
 }
