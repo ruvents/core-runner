@@ -2,24 +2,41 @@
 
 namespace Runner;
 
-final class Dispatcher {
-    private $in;
-    private $out;
-    private $err;
+/**
+ * Прослойка между приложением PHP и corerunner. Открывает stdin, слушает
+ * proto-сообщения от coreruner, обрабатывает их и отдает ответ в stdout.
+ */
+final class Dispatcher
+{
+    /** @var resource */
+    private mixed $in;
 
-    public function __construct() {
+    /** @var resource */
+    private mixed $out;
+
+    /** @var resource */
+    private mixed $err;
+
+    public function __construct()
+    {
         $this->in = fopen('php://stdin', 'r');
         $this->out = fopen('php://stdout', 'w');
         $this->err = fopen('php://stderr', 'w');
     }
 
-    public function __desctruct() {
+    public function __destruct()
+    {
         fclose($this->in);
         fclose($this->out);
         fclose($this->err);
     }
 
-    public function run(\Closure $handler) {
+    /**
+     * Запуск блокирующего слушателя сообщений от corerunner. $handler получает
+     * бинарное сообщение текстом, которое нужно десериализовать.
+     */
+    public function run(\Closure $handler): void
+    {
         // Сообщаем серверу, что готовы принимать запросы.
         fwrite($this->out, "ok\n");
 
@@ -32,7 +49,8 @@ final class Dispatcher {
         }
     }
 
-    private function messages(): iterable {
+    private function messages(): iterable
+    {
         while (($line = fgets($this->in)) !== false) {
             $line = rtrim($line, "\n");
 
@@ -55,7 +73,8 @@ final class Dispatcher {
         }
     }
 
-    private function send(string $data): void {
+    private function send(string $data): void
+    {
         fwrite($this->out, strlen($data)."\n");
 
         foreach (str_split($data, 2048) as $spl) {
@@ -63,7 +82,8 @@ final class Dispatcher {
         }
     }
 
-    private function error(string $error, string $context = null): void {
+    private function error(string $error, string $context = null): void
+    {
         fwrite($this->err, "\033[1;31mError from PHP: $error\033[0m\n");
 
         if ($context !== null) {

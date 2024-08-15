@@ -2,6 +2,9 @@
 
 namespace Runner;
 
+/**
+ * RPC-клиент для отправки команд Go процессу.
+ */
 final class RPC
 {
     private $socket;

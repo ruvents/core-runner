@@ -9,7 +9,8 @@ final class RPCRequest {
         private string $method,
         private mixed $arg
     ) {
-        $this->id = random_int(0, 10000); // TODO: UUIDv4
+        // TODO: UUIDv4
+        $this->id = random_int(0, 10000);
     }
 
     public function serialize(): string {

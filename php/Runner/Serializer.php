@@ -11,6 +11,30 @@ require_once "Messages/JobRequest.php";
 
 use Runner\Messages;
 
+/**
+ * Класс, реализующий сериализацию и десериализацию сообщений по бинарному
+ * протоколу для передачи данных в Go процесс и получения данных от него.
+ *
+ * Сам протокол очень простой, поддерживает два базовых типа данных:
+ * 1) string (+ отдельно bytes, но PHP не знает разницы между ними)
+ * 2) uint64
+ *
+ * Все данные записываются/читаются в little endian. Тип данных в самом поле не
+ * указывается. Порядок записи и чтения полей должен повторяться, т.е. порядок
+ * полей имеет значение.
+ *
+ * Строка записывается так: сначала uint64 с количеством байт в строке, потом
+ * сама строка:
+ * [len(str)][str]
+ *
+ * Массивы записываются так: сначала uint64 с количеством элементов, потом сами
+ * элементы подряд:
+ * [len(arr)][element1][element2][...]
+ *
+ * Карты/словари записываются так: сначала uint64 с количеством элементов,
+ * потом пара: ключ элемента и сам элемент:
+ * [len(map)][key1][value1][key2][value2][...].
+ */
 final class Serializer
 {
     public function parseHTTPRequest(Stream $stream): Messages\HTTPRequest {
@@ -48,7 +72,7 @@ final class Serializer
 
         $files = $this->parseFileMap($stream);
 
-        if ($headers === false) {
+        if ($files === false) {
             throw new \RuntimeException(
                 'Не получилось десериализовать поле files.'
             );
@@ -214,7 +238,7 @@ final class Serializer
     }
 
     /**
-     * @param array<string, string>|false $map
+     * @param array<string, string> $map
      */
     private function writeStringMap(Stream $stream, array $map): void {
         $this->writeUint64($stream, count($map));
@@ -226,7 +250,7 @@ final class Serializer
     }
 
     /**
-     * @return array<string, File>|false
+     * @return array<string, Messages\File>|false
      */
     private function parseFileMap(Stream $stream): array|false {
         $len = $this->parseUint64($stream);
@@ -244,13 +268,7 @@ final class Serializer
                 return false;
             }
 
-            $value = $this->parseFile($stream);
-
-            if ($value === false) {
-                return false;
-            }
-
-            $result[$key] = $value;
+            $result[$key] = $this->parseFile($stream);
         }
 
         return $result;
