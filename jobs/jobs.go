@@ -1,29 +1,28 @@
 package jobs
 
 import (
+	"bytes"
 	"log"
 	"time"
 
 	runner "github.com/ruvents/corerunner"
-	"github.com/ruvents/corerunner/message"
-	"google.golang.org/protobuf/proto"
 )
 
 // Простые эфемерные очереди.
 type Pool struct {
-	queue chan *message.JobRequest
+	queue chan *runner.JobRequest
 	wrks  *runner.Pool
 }
 
 func New(wrks *runner.Pool) *Pool {
 	return &Pool{
 		wrks:  wrks,
-		queue: make(chan *message.JobRequest, 512),
+		queue: make(chan *runner.JobRequest, 512),
 	}
 }
 
 // Queue добавляет в очередь на выполнение задачу.
-func (j *Pool) Queue(r *message.JobRequest) {
+func (j *Pool) Queue(r *runner.JobRequest) {
 	j.queue <- r
 }
 
@@ -42,12 +41,14 @@ func (j *Pool) Run() {
 			}
 			start := time.Now()
 			log.Printf("job: %s started\n", req.Name)
-			buf, err := proto.Marshal(req)
+			var buf bytes.Buffer
+			buf.Grow(4096)
+			err := req.Write(&buf)
 			if err != nil {
-				log.Print("job:protobuf serialization error : ", err)
+				log.Print("job: serialization error: ", err)
 			}
 			wrkCh := j.wrks.Send(
-				[]byte(buf),
+				buf.Bytes(),
 				time.Duration(req.Timeout)*time.Millisecond,
 			)
 			wrkRes := <-wrkCh

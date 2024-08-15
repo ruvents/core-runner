@@ -18,7 +18,6 @@ import (
 	rhttp "github.com/ruvents/corerunner/http"
 	"github.com/ruvents/corerunner/http/websocket"
 	"github.com/ruvents/corerunner/jobs"
-	"github.com/ruvents/corerunner/message"
 	"github.com/ruvents/corerunner/redis"
 )
 
@@ -28,7 +27,7 @@ var rPublisher *redis.Connection
 var rListener *redis.Connection
 var instanceID runner.UUID4
 
-// Пример приложения, собранного из библиотеки runner.
+// Пример приложения, собранного из библиотеки corerunner.
 func main() {
 	instanceID = runner.NewUUID4()
 
@@ -72,7 +71,7 @@ func main() {
 		// PHP-приложению.
 		handler := rhttp.NewStaticHandler(*static, *maxAge, *cors)
 		timeout := time.Second * 30
-		handler.Next(rhttp.NewProtoHandler(
+		handler.Next(rhttp.NewWorkerHandler(
 			&wrks, *cors, timeout, uint(*wrksNum) * 2,
 		))
 		http.Handle("/", handler)
@@ -206,9 +205,9 @@ func (r *RPCHandler) PublishMessage(args []string, reply *bool) error {
 
 func (r *RPCHandler) RunJob(args []any, reply *bool) error {
 	// Первый аргумент -- название фоновой работы, второй -- payload.
-	req := message.JobRequest{}
+	req := runner.JobRequest{}
 	req.Name = args[0].(string)
-	req.Payload = args[1].(string)
+	req.Payload = []byte(args[1].(string))
 	req.Timeout = uint64(args[2].(float64))
 	jobsPool.Queue(&req)
 	*reply = true

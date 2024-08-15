@@ -95,15 +95,17 @@ type Worker struct {
 	queue   chan WorkerJob
 }
 
-type WorkerResult struct {
-	Res []byte
-	Err error
-}
-
+// Задача на обработку для запущенного процесса.
 type WorkerJob struct {
 	data    []byte
 	timeout time.Duration
 	res     chan WorkerResult
+}
+
+// Результат выполнения WorkerJob.
+type WorkerResult struct {
+	Res []byte
+	Err error
 }
 
 func NewWorker(queue chan WorkerJob) *Worker {

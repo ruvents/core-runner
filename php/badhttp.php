@@ -1,22 +1,26 @@
 <?php
 
-use Runner\Messages\Request;
-use Runner\Messages\Response;
-use Runner\Dispatcher;
-
-require_once "vendor/autoload.php";
-require_once "GPBMetadata/Messages.php";
-require_once "Runner/Messages/Request.php";
-require_once "Runner/Messages/Response.php";
-require_once "Runner/Messages/File.php";
+/**
+ * Обработчик HTTP-сообщений из процесса Go, периодически выкидывающий ошибки
+ * и падающий по таймауту. Нужен для проверки обработки таких ситуаций в Go
+ * приложении.
+ */
 require_once "Runner/Dispatcher.php";
+require_once "Runner/Messages/File.php";
+require_once "Runner/Messages/HTTPResponse.php";
+require_once "Runner/Serializer.php";
+require_once "Runner/Stream.php";
+
+use Runner\Dispatcher;
+use Runner\Messages\File;
+use Runner\Messages\HTTPResponse;
+use Runner\Serializer;
+use Runner\Stream;
 
 (new Dispatcher())->run(
     static function (string $msg): string {
-        // Десериализация сообщения в нужный объект. В данном случае, это
-        // HTTP-запрос, но в теории можно использовать любое protobuf-сообщение.
-        $req = new Request(); 
-        $req->mergeFromString($msg);
+        $serializer = new Serializer();
+        $request = $serializer->parseHTTPRequest(new Stream($msg));
         usleep(random_int(1, 5) * 1000);
 
         if (random_int(1, 30) === 7) {
@@ -27,16 +31,27 @@ require_once "Runner/Dispatcher.php";
             throw new \RuntimeException('ERROR');
         }
 
-        // Формируем ответ Go-процессу. Тут будет логика приложения.
-        // Собираем protobuf-сообщение с HTTP-ответом и отправляем его
-        // сериализованную версию.
-        $response = (new Response())
-            ->setStatusCode(200)
-            ->setHeaders(['Content-Type' => 'application/json'])
-            ->setBody("{\"method\": \"{$req->getMethod()}\"}")
-        ;
+        $response = new HTTPResponse(
+            200,
+            $request->headers,
+            json_encode([
+                'body' => $request->body,
+                'files' => array_map(
+                    fn (File $f): array => [
+                        'filename' => $f->filename,
+                        'size' => $f->size,
+                        'tmpPath' => $f->tmpPath,
+                    ],
+                    $request->files,
+                ),
+                'form' => $request->form,
+            ]),
+        );
 
-        return $response->serializeToString();
+        $stream = new Stream('');
+        $serializer->writeHTTPResponse($stream, $response);
+
+        return $stream->toString();
     }
 );
 
