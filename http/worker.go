@@ -26,7 +26,7 @@ type WorkerHandler struct {
 // отдавать результат выполнения wrks.Send(). Общение с процессами воркеров
 // происходит посредством бинарных сообщений в формате. Если len(wrks) == 0, то
 // на все запросы отдается 404. При cors == true всем ответам будут добавляться
-// отключающие CORS заголовки. Если timeout превышен при обработке запроса 
+// отключающие CORS заголовки. Если timeout превышен при обработке запроса
 // воркером, воркер перезапускается. Если timeout превышен maxTimeouts раз
 // подряд, то убивается весь процесс corerunner.
 func NewWorkerHandler(
@@ -174,7 +174,7 @@ func (h *WorkerHandler) parseFiles(r *http.Request) (map[string]*runner.File, er
 			TmpPath:  f.Name(),
 			// должно быть безопасно, Size не должен быть
 			// отрицательным
-			Size:     uint64(fh.Size),
+			Size: uint64(fh.Size),
 		}
 	}
 	return fs, nil

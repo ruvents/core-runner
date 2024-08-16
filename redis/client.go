@@ -15,8 +15,8 @@ import (
 )
 
 type Connection struct {
-	conn *net.TCPConn
-	pingTicker *time.Ticker
+	conn        *net.TCPConn
+	pingTicker  *time.Ticker
 	pingStopper chan bool
 }
 
@@ -85,7 +85,7 @@ func (c *Connection) Publish(topic string, message string) error {
 // строк, даже если ответ был один. Если Redis отдал ошибку, она вернется во
 // втором значении error. Если был получен PONG, то автоматически продлевает
 // read deadline соединения.
-func (c *Connection) ReadResponse () ([]string, error) {
+func (c *Connection) ReadResponse() ([]string, error) {
 	for {
 		c.conn.SetReadDeadline(time.Now().Add(pongWait))
 		res, err := c.readResponse(bufio.NewReader(c.conn), []string{})
@@ -125,7 +125,7 @@ func (c *Connection) readResponse(
 
 	if str[0] == '-' {
 		return nil, errors.New("from redis: " + str[1:])
-	} else if (str[0] == '+' || str[0] == ':') {
+	} else if str[0] == '+' || str[0] == ':' {
 		return append(result, str[1:]), nil
 	} else if str[0] == '$' {
 		blen, err := strconv.Atoi(str[1:])
@@ -142,12 +142,12 @@ func (c *Connection) readResponse(
 		}
 		buf := make([]byte, blen)
 		_, err = reader.Read(buf)
-		if (err != nil) {
+		if err != nil {
 			return nil, err
 		}
 		// Пропускаем \r\n.
 		_, err = reader.Discard(2)
-		if (err != nil) {
+		if err != nil {
 			return nil, err
 		}
 		result = append(result, string(buf))
@@ -204,19 +204,19 @@ func (c *Connection) livelinessLoop() {
 				"redis: could not reconnect: %s\n",
 				err,
 			)
-			time.Sleep(time.Second * time.Duration(i * 5))
+			time.Sleep(time.Second * time.Duration(i*5))
 		}
 	}
 
 	for {
 		select {
 		case <-c.pingTicker.C:
-		if c.Ping() == nil {
-			continue
-		}
-		go reconnectLoop()
+			if c.Ping() == nil {
+				continue
+			}
+			go reconnectLoop()
 
-		case <- c.pingStopper:
+		case <-c.pingStopper:
 			break
 		}
 	}
@@ -226,7 +226,7 @@ func (c *Connection) write(args ...string) error {
 	if c.conn == nil {
 		return errors.New("no connection")
 	}
-	if (writeDeadline > 0) {
+	if writeDeadline > 0 {
 		c.conn.SetWriteDeadline(
 			time.Now().Add(time.Second * writeDeadline),
 		)

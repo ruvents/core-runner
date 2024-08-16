@@ -19,14 +19,14 @@ func TestRedisClient(t *testing.T) {
 		t.Fatal("error subscribing to pubsub topic:", err)
 	}
 
-	go func () {
+	go func() {
 		conn, err := Connect("localhost:6379")
 		if err != nil {
 			log.Fatal("error connecting to redis:", err)
 		}
 		defer conn.Close()
 		for i := 0; i < 5; i++ {
-			err = conn.Publish("test:foobar", "msg #" + strconv.Itoa(i))
+			err = conn.Publish("test:foobar", "msg #"+strconv.Itoa(i))
 			if err != nil {
 				log.Fatal("error publishing pubsub message:", err)
 			}
