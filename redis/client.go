@@ -55,7 +55,7 @@ func (c *Connection) Reconnect() error {
 	return c.connect(c.conn.RemoteAddr().(*net.TCPAddr))
 }
 
-// PSubscribe публикует message в канале channel.
+// PSubscribe подписывает Redis-соединение на pubsub-топик (или топики).
 func (c *Connection) PSubscribe(pattern string) error {
 	if c.conn == nil {
 		return errors.New("no connection")
@@ -68,12 +68,12 @@ func (c *Connection) PSubscribe(pattern string) error {
 	return err
 }
 
-// Publish публикует message в канале channel.
-func (c *Connection) Publish(channel string, message string) error {
+// Publish публикует message в канале topic.
+func (c *Connection) Publish(topic string, message string) error {
 	if c.conn == nil {
 		return errors.New("no connection")
 	}
-	err := c.write("publish", channel, message)
+	err := c.write("publish", topic, message)
 	if err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func (c *Connection) Close() error {
 }
 
 func (c *Connection) livelinessLoop() {
-	// Каждые тридцать секунд проверяем, что соединение живо. Если видим
+	// Каждые pingPeriod секунд проверяем, что соединение живо. Если видим
 	// проблему, то пытаемся переподключиться.
 	c.pingStopper = make(chan bool)
 	c.pingTicker = time.NewTicker(pingPeriod)

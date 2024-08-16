@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"net/rpc/jsonrpc"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	runner "github.com/ruvents/corerunner"
@@ -23,14 +23,9 @@ import (
 
 var wsPool *websocket.Pool
 var jobsPool *jobs.Pool
-var rPublisher *redis.Connection
-var rListener *redis.Connection
-var instanceID runner.UUID4
 
 // Пример приложения, собранного из библиотеки corerunner.
 func main() {
-	instanceID = runner.NewUUID4()
-
 	httpExe := flag.String("p", "", "Run specified PHP-file for HTTP handling. HTTP workers will not be started if flag is omitted.")
 	wrksNum := flag.Int("n", runtime.NumCPU(), "Number of HTTP-workers to start")
 	addr := flag.String("l", "127.0.0.1:3000", "Address HTTP-server will listen to")
@@ -39,6 +34,7 @@ func main() {
 	cors := flag.Bool("cors", false, "Add CORS headers to responses with \"*\" values")
 	jobsExe := flag.String("j", "", "Run specified PHP-file for jobs handling. Jobs will not be started if flag is omitted.")
 	rpcAddr := flag.String("rpc", "", "Start RPC handler on specified address")
+	redisAddr := flag.String("r", "", "Start Redis listener to specified address")
 	flag.Parse()
 
 	env := os.Environ()
@@ -80,41 +76,47 @@ func main() {
 	// Websocket
 	wsPool = websocket.NewPool()
 
-	rListener, err := redis.Connect("localhost:6379")
-	if err != nil {
-		log.Fatalf("redis: %s", err)
-	}
-	defer rListener.Close()
-	err = rListener.PSubscribe("chat:*")
-	if err != nil {
-		log.Fatalf("redis: %s", err)
-	}
-	go func() {
-		for {
-			res, err := rListener.ReadResponse()
-			if err != nil {
-				log.Fatalf("redis: %s", err)
-			}
-			if len(res) != 4 && res[0] != "pmessage" {
-				continue
-			}
-			topic := res[2]
-			payload := res[3]
-			sourceID := topic[5:41]
-			if sourceID == string(instanceID) {
-				return
-			}
-			wsPool.Publish(topic[42:], []byte(payload), "")
+	if redisAddr != nil {
+		addr := *redisAddr
+		if strings.HasPrefix(addr, "redis://") {
+			addr, _ = strings.CutPrefix(addr, "redis://")
 		}
-	}()
+		if strings.HasPrefix(addr, "tcp://") {
+			addr, _ = strings.CutPrefix(addr, "tcp://")
+		}
+		addr = strings.Trim(addr, "/")
 
-	r, err := redis.Connect("localhost:6379")
-	if err != nil {
-		log.Fatalf("redis: %s", err)
+		// TODO: Вместо pub/sub лучше реализовать такой механизм:
+		// https://panlw.github.io/15459021437244.html
+		rListener, err := redis.Connect(addr)
+		if err != nil {
+			log.Fatalf("redis connection error: %s", err)
+		}
+		defer rListener.Close()
+		err = rListener.PSubscribe("chat:*")
+		if err != nil {
+			log.Fatalf("redis PSubscribe error: %s", err)
+		}
+		go func() {
+			for {
+				res, err := rListener.ReadResponse()
+				if err != nil {
+					log.Println("redis error:", err)
+				}
+				if len(res) != 4 && res[0] != "pmessage" {
+					continue
+				}
+				topic := res[2]
+				if len(topic) < 6 {
+					continue
+				}
+				payload := res[3]
+				wsPool.Publish(topic[5:], []byte(payload), "")
+			}
+		}()
+		log.Println("redis: listening to " + addr)
 	}
-	rPublisher = r
 
-	defer rPublisher.Close()
 	http.Handle("/ws", websocket.NewHandler(
 		func(msg []byte, conn *websocket.Connection) []byte {
 			cmd := struct {
@@ -150,12 +152,8 @@ func main() {
 	if *httpExe != "" {
 		log.Printf(`http: serving PHP application "%s"`, *httpExe)
 	}
-	log.Print("http: listening on " + *addr)
-	err = http.ListenAndServe(*addr, nil)
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	log.Println("http: listening on " + *addr)
+	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
 func startRPC(addr string) {
@@ -178,30 +176,6 @@ func startRPC(addr string) {
 }
 
 type RPCHandler int
-
-func (r *RPCHandler) PublishMessage(args []string, reply *bool) error {
-	// Первый аргумент -- топик, второй текстовое сообщение.
-	m := struct {
-		Topic   string `json:"topic"`
-		Payload string `json:"payload"`
-	}{
-		Topic:   args[0],
-		Payload: args[1],
-	}
-	msg, err := json.Marshal(m)
-	if err != nil {
-		return fmt.Errorf("json marshaling error: %v", err)
-	}
-	wsPool.Publish(m.Topic, []byte(msg), "")
-	// Распространяем сообщение по остальным инстансам corerunner, чтобы
-	// они могли разослать сообщения по своим WS-подключениям.
-	rPublisher.Publish(
-		"chat:" + string(instanceID) + ":" + m.Topic,
-		string(instanceID) + m.Payload,
-	)
-	*reply = true
-	return nil
-}
 
 func (r *RPCHandler) RunJob(args []any, reply *bool) error {
 	// Первый аргумент -- название фоновой работы, второй -- payload.
