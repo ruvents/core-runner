@@ -18,6 +18,7 @@ type Connection struct {
 	conn        *net.TCPConn
 	pingTicker  *time.Ticker
 	pingStopper chan bool
+	topics      []string
 }
 
 const (
@@ -48,11 +49,23 @@ func Connect(address string) (*Connection, error) {
 
 // Reconnect закрывает текущее соединение и открывает новое к тому же адресу.
 func (c *Connection) Reconnect() error {
+	topics := c.topics
 	err := c.Close()
 	if err != nil {
 		return err
 	}
-	return c.connect(c.conn.RemoteAddr().(*net.TCPAddr))
+	err = c.connect(c.conn.RemoteAddr().(*net.TCPAddr))
+	if err != nil {
+		return err
+	}
+	// resubscribe to topics
+	for _, t := range topics {
+		err = c.PSubscribe(t)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // PSubscribe подписывает Redis-соединение на pubsub-топик (или топики).
@@ -65,7 +78,11 @@ func (c *Connection) PSubscribe(pattern string) error {
 		return err
 	}
 	_, err = c.ReadResponse()
-	return err
+	if err != nil {
+		return err
+	}
+	c.topics = append(c.topics, pattern)
+	return nil
 }
 
 // Publish публикует message в канале topic.
@@ -181,6 +198,7 @@ func (c *Connection) Close() error {
 		c.pingTicker.Stop()
 		c.pingStopper <- true
 	}
+	c.topics = []string{}
 	err := c.conn.Close()
 	if errors.Is(err, net.ErrClosed) {
 		return nil
@@ -196,15 +214,16 @@ func (c *Connection) livelinessLoop() {
 	reconnectLoop := func() {
 		for i := 0; i < 50; i++ {
 			err := c.Reconnect()
-			if err == nil {
-				log.Println("redis: successfully reconnected")
-				break
+			if err != nil {
+				log.Printf(
+					"redis: could not reconnect: %s\n",
+					err,
+				)
+				time.Sleep(time.Second * time.Duration(i*5))
+				continue
 			}
-			log.Printf(
-				"redis: could not reconnect: %s\n",
-				err,
-			)
-			time.Sleep(time.Second * time.Duration(i*5))
+			log.Println("redis: successfully reconnected")
+			break
 		}
 	}
 
