@@ -75,8 +75,27 @@ func main() {
 
 	// Websocket
 	wsPool = websocket.NewPool()
+	http.Handle("/ws", websocket.NewHandler(
+		func(msg []byte, conn *websocket.Connection) []byte {
+			cmd := struct {
+				Command string
+				Topics  []string
+			}{}
+			err := json.Unmarshal(msg, &cmd)
+			if err != nil {
+				return nil
+			}
+			if cmd.Command == "join" && len(cmd.Topics) > 0 {
+				wsPool.Subscribe(conn, cmd.Topics[0])
+			}
+			return []byte("ok")
+		},
+		func(conn *websocket.Connection) {
+			wsPool.Remove(conn)
+		},
+	))
 
-	if redisAddr != nil {
+	if redisAddr != nil && *redisAddr != "" {
 		addr := *redisAddr
 		if strings.HasPrefix(addr, "redis://") {
 			addr, _ = strings.CutPrefix(addr, "redis://")
@@ -116,26 +135,6 @@ func main() {
 		}()
 		log.Println("redis: listening to " + addr)
 	}
-
-	http.Handle("/ws", websocket.NewHandler(
-		func(msg []byte, conn *websocket.Connection) []byte {
-			cmd := struct {
-				Command string
-				Topics  []string
-			}{}
-			err := json.Unmarshal(msg, &cmd)
-			if err != nil {
-				return nil
-			}
-			if cmd.Command == "join" && len(cmd.Topics) > 0 {
-				wsPool.Subscribe(conn, cmd.Topics[0])
-			}
-			return []byte("ok")
-		},
-		func(conn *websocket.Connection) {
-			wsPool.Remove(conn)
-		},
-	))
 
 	if *jobsExe != "" {
 		log.Println("jobs: waiting for requests")
