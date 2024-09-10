@@ -67,7 +67,7 @@ func main() {
 		handler := rhttp.NewStaticHandler(*static, *maxAge, *cors)
 		timeout := time.Second * 30
 		handler.Next(rhttp.NewWorkerHandler(
-			&wrks, *cors, timeout, uint(*wrksNum) * 2,
+			&wrks, *cors, timeout, uint(*wrksNum)*2,
 		))
 		http.Handle("/", handler)
 	}

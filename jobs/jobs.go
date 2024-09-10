@@ -25,7 +25,7 @@ func (j *Pool) Call(
 	name string, payload []byte, timeout time.Duration,
 ) ([]byte, error) {
 	req := runner.JobRequest{
-		Name: name,
+		Name:    name,
 		Payload: payload,
 		Timeout: uint64(timeout.Milliseconds()),
 	}

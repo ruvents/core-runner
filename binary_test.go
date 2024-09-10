@@ -1,8 +1,8 @@
 package corerunner
 
 import (
-	"testing"
 	"bytes"
+	"testing"
 	"time"
 )
 
@@ -98,8 +98,8 @@ func TestHTTPResponseSerialization(t *testing.T) {
 	headers["Content-Type"] = "application/json"
 	want := HTTPResponse{
 		StatusCode: 200,
-		Headers: headers,
-		Body: []byte{'h', 'e', 'l', 'l', 'o', '!'},
+		Headers:    headers,
+		Body:       []byte{'h', 'e', 'l', 'l', 'o', '!'},
 	}
 	buf := bytes.Buffer{}
 	err := want.Write(&buf)
@@ -147,8 +147,8 @@ func TestFileMapSerialization(t *testing.T) {
 
 func TestFileSerialization(t *testing.T) {
 	want := File{
-		Size: 123,
-		TmpPath: "/tmp/foobar.tmp",
+		Size:     123,
+		TmpPath:  "/tmp/foobar.tmp",
 		Filename: "foobar.tmp",
 	}
 	buf := bytes.Buffer{}
@@ -182,11 +182,11 @@ func TestHTTPRequestSerialization(t *testing.T) {
 	form := make(map[string]string)
 	form["form"] = "value"
 	want := &HTTPRequest{
-		Method: "POST",
-		URL: "https://test.ru",
+		Method:  "POST",
+		URL:     "https://test.ru",
 		Headers: headers,
-		Files: files,
-		Form: form,
+		Files:   files,
+		Form:    form,
 	}
 	buf := bytes.Buffer{}
 	err := want.Write(&buf)
@@ -214,7 +214,7 @@ func TestHTTPRequestSerialization(t *testing.T) {
 
 func TestJobRequestSerialization(t *testing.T) {
 	want := &JobRequest{
-		Name: "testName",
+		Name:    "testName",
 		Payload: []byte("test payload!!"),
 		Timeout: 123,
 	}
@@ -271,12 +271,12 @@ func TestPHPIntegration(t *testing.T) {
 	form := make(map[string]string)
 	form["form"] = "value"
 	req := &HTTPRequest{
-		Method: "POST",
-		URL: "https://test.ru",
-		Body: []byte("test"),
+		Method:  "POST",
+		URL:     "https://test.ru",
+		Body:    []byte("test"),
 		Headers: headers,
-		Files: files,
-		Form: form,
+		Files:   files,
+		Form:    form,
 	}
 	buf := bytes.Buffer{}
 	req.Write(&buf)

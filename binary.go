@@ -2,19 +2,19 @@
 // базовых типа данных:
 // 1) string (или []byte)
 // 2) uint64
-// 
+//
 // Все данные записываются/читаются в little endian. Тип данных в самом поле не
 // указывается. Порядок записи и чтения полей должен повторяться, т.е. порядок
 // полей имеет значение.
-// 
+//
 // Строка записывается так: сначала uint64 с количеством байт в строке, потом
 // сама строка:
 // [len(str)][str]
-// 
+//
 // Массивы записываются так: сначала uint64 с количеством элементов, потом сами
 // элементы подряд:
 // [len(arr)][element1][element2][...]
-// 
+//
 // Карты/словари записываются так: сначала uint64 с количеством элементов,
 // потом пара: ключ элемента и сам элемент:
 // [len(map)][key1][value1][key2][value2][...].
@@ -29,12 +29,12 @@ import (
 
 // HTTP-запрос, который Go процесс передает в воркер в бинарном виде.
 type HTTPRequest struct {
-	Method string
-	URL string
+	Method  string
+	URL     string
 	Headers map[string]string
-	Body []byte
-	Files map[string]*File
-	Form map[string]string
+	Body    []byte
+	Files   map[string]*File
+	Form    map[string]string
 }
 
 // Write сериализует HTTP-запрос с записью в указанный io.Writer.
@@ -100,8 +100,8 @@ func (hr *HTTPRequest) Parse(r io.Reader) error {
 // HTTP-файл, который Go процесс передает в воркер в бинарном виде.
 type File struct {
 	Filename string
-	TmpPath string
-	Size uint64
+	TmpPath  string
+	Size     uint64
 }
 
 // Write сериализует HTTP-файл с записью в указанный io.Writer.
@@ -140,8 +140,8 @@ func (f *File) Parse(r io.Reader) error {
 // HTTP-ответ, возвращаемый воркером в бинарном виде в Go-процесс.
 type HTTPResponse struct {
 	StatusCode uint64
-	Headers map[string]string
-	Body []byte
+	Headers    map[string]string
+	Body       []byte
 }
 
 // Write сериализует HTTP-файл с записью в указанный io.Writer.
@@ -180,7 +180,7 @@ func (hr *HTTPResponse) Parse(r io.Reader) error {
 // Задача, отправляемая в бинарном виде в воркер для обработки. Задача при
 // выполнении возвращает результат JobResponse.
 type JobRequest struct {
-	Name string
+	Name    string
 	Payload []byte
 	Timeout uint64
 }

@@ -86,13 +86,13 @@ func (p *Pool) Stop() {
 }
 
 type Worker struct {
-	cmd     *exec.Cmd
-	read    *bufio.Reader
-	write   *bufio.Writer
-	mu      sync.Mutex
-	argv    []string
-	env     []string
-	queue   chan WorkerJob
+	cmd   *exec.Cmd
+	read  *bufio.Reader
+	write *bufio.Writer
+	mu    sync.Mutex
+	argv  []string
+	env   []string
+	queue chan WorkerJob
 }
 
 // Задача на обработку для запущенного процесса.
