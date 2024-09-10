@@ -4,14 +4,14 @@
  * Пример обработчика задач, приходящих из процесса Go.
  */
 require_once "Runner/Dispatcher.php";
-require_once "Runner/Messages/File.php";
-require_once "Runner/Messages/HTTPResponse.php";
 require_once "Runner/Serializer.php";
 require_once "Runner/Stream.php";
+require_once "Runner/Messages/JobResponse.php";
 
 use Runner\Dispatcher;
 use Runner\Serializer;
 use Runner\Stream;
+use Runner\Messages\JobResponse;
 
 (new Dispatcher())->run(
     static function (string $msg): string {
@@ -26,7 +26,10 @@ use Runner\Stream;
         sleep(2);
         file_put_contents('php://stderr', "Фоновая задача выполнена...\n");
 
-        return 'ok';
+        $stream = new Stream('');
+        $serializer->writeJobResponse($stream, new JobResponse('ok'));
+
+        return $stream->toString();
     }
 );
 

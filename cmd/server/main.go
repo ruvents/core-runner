@@ -48,8 +48,7 @@ func main() {
 				log.Fatal("error starting: ", err)
 			}
 			defer wrks.Stop()
-			jobsPool = jobs.New(&wrks)
-			go jobsPool.Run()
+			jobsPool = jobs.NewPool(&wrks)
 		}
 		go startRPC(*rpcAddr)
 	}
@@ -178,11 +177,18 @@ type RPCHandler int
 
 func (r *RPCHandler) RunJob(args []any, reply *bool) error {
 	// Первый аргумент -- название фоновой работы, второй -- payload.
-	req := runner.JobRequest{}
-	req.Name = args[0].(string)
-	req.Payload = []byte(args[1].(string))
-	req.Timeout = uint64(args[2].(float64))
-	jobsPool.Queue(&req)
+	name := args[0].(string)
+	payload := []byte(args[1].(string))
+	timeout := time.Duration(args[2].(float64))
+	go func() {
+		start := time.Now()
+		log.Printf("job: %s started", name)
+		_, err := jobsPool.Call(name, payload, time.Millisecond*timeout)
+		if err != nil {
+			log.Printf("job: %s error: %s", name, err)
+		}
+		log.Printf("job: %s finished (%s)", name, time.Since(start))
+	}()
 	*reply = true
 	return nil
 }

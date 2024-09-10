@@ -8,6 +8,7 @@ require_once "Messages/File.php";
 require_once "Messages/HTTPRequest.php";
 require_once "Messages/HTTPResponse.php";
 require_once "Messages/JobRequest.php";
+require_once "Messages/JobResponse.php";
 
 use Runner\Messages;
 
@@ -164,6 +165,13 @@ final class Serializer
         }
 
         return new Messages\JobRequest($name, $payload, $timeout);
+    }
+
+    public function writeJobResponse(
+        Stream $stream,
+        Messages\JobResponse $jobResponse
+    ): void {
+        $this->writeString($stream, $jobResponse->payload);
     }
 
     private function writeString(Stream $stream, string $value): void {

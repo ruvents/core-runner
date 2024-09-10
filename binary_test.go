@@ -239,6 +239,29 @@ func TestJobRequestSerialization(t *testing.T) {
 	}
 }
 
+func TestJobResponseSerialization(t *testing.T) {
+	want := &JobResponse{
+		Payload: []byte("test payload!!"),
+	}
+	buf := bytes.Buffer{}
+	err := want.Write(&buf)
+	if err != nil {
+		t.Fatalf("could not write a job response: %s", err)
+	}
+	got := JobResponse{}
+	err = got.Parse(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		t.Fatalf("could not parse a job response: %s", err)
+	}
+	if !bytes.Equal(got.Payload, want.Payload) {
+		t.Fatalf(
+			"written and parsed job responses do not match: %v and %v",
+			want,
+			got,
+		)
+	}
+}
+
 func TestPHPIntegration(t *testing.T) {
 	headers := make(map[string]string)
 	headers["Authentication"] = "Bearer TOKEN!"

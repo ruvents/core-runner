@@ -177,7 +177,8 @@ func (hr *HTTPResponse) Parse(r io.Reader) error {
 	return nil
 }
 
-// Задача, отправляемая в бинарном виде в воркер для обработки.
+// Задача, отправляемая в бинарном виде в воркер для обработки. Задача при
+// выполнении возвращает результат JobResponse.
 type JobRequest struct {
 	Name string
 	Payload []byte
@@ -214,6 +215,26 @@ func (jr *JobRequest) Parse(r io.Reader) error {
 		return err
 	}
 	jr.Timeout = timeout
+	return nil
+}
+
+// Ответ из воркера после обработки JobRequest.
+type JobResponse struct {
+	Payload []byte
+}
+
+// Write сериализует ответ задачи с записью в указанный io.Writer.
+func (jr *JobResponse) Write(w io.Writer) error {
+	return writeBytes(w, jr.Payload)
+}
+
+// Parse считывает ответ задачи из указанного io.Reader.
+func (jr *JobResponse) Parse(r io.Reader) error {
+	payload, err := parseBytes(r)
+	if err != nil {
+		return err
+	}
+	jr.Payload = payload
 	return nil
 }
 

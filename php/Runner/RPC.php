@@ -2,6 +2,12 @@
 
 namespace Runner;
 
+require_once "RPCRequest.php";
+require_once "RPCResponse.php";
+
+use Runner\RPCRequest;
+use Runner\RPCResponse;
+
 /**
  * RPC-клиент для отправки команд Go процессу.
  */
